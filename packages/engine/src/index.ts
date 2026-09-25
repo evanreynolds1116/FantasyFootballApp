@@ -8,3 +8,7 @@ export * from "./errors.js";
 export type { Ctx } from "./clock.js";
 export { reduce } from "./reduce.js";
 export type { ReduceResult } from "./rules/result.js";
+export * from "./selectors/budget.js";
+export * from "./selectors/roster.js";
+export * from "./selectors/eligibility.js";
+export * from "./selectors/lots.js";

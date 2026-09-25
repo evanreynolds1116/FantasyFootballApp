@@ -1,0 +1,255 @@
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+// --- Enums, mirroring the engine's exact literal unions ---------------------
+
+export const draftPhaseEnum = pgEnum("draft_phase", ["setup", "auction", "snake", "makeup", "complete"]);
+
+export const lotStateEnum = pgEnum("lot_state", [
+  "queued",
+  "open",
+  "paused",
+  "closed",
+  "revealed",
+  "tieRebid",
+  "fallback",
+  "awarded",
+  "returnedToPool",
+  "cancelled",
+]);
+
+export const pickSourceEnum = pgEnum("pick_source", ["auction", "snake", "makeup", "auto"]);
+
+export const tieFallbackEnum = pgEnum("tie_fallback", [
+  "randomDraw",
+  "commissionerDecides",
+  "higherBudget",
+  "earlierTeamNumber",
+]);
+
+export const noBidActionEnum = pgEnum("no_bid_action", ["awardNominator", "returnToPool"]);
+
+export const nominationOrderEnum = pgEnum("nomination_order", ["snake", "fixed"]);
+
+export const pickExpiryActionEnum = pgEnum("pick_expiry_action", ["autoPick", "skip"]);
+
+// --- Tables -------------------------------------------------------------
+
+export const user = pgTable("user", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  displayName: text("display_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  authProvider: text("auth_provider").notNull().default("dev"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const session = pgTable("session", {
+  token: text("token").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+});
+
+export const league = pgTable("league", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  commissionerUserId: uuid("commissioner_user_id")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** ClockSetting columns (nomination/bid/tie/pick) are nullable integers: null = "off", matching the engine's `number | "off"`. */
+export const draftSettings = pgTable("draft_settings", {
+  leagueId: uuid("league_id")
+    .primaryKey()
+    .references(() => league.id, { onDelete: "cascade" }),
+  teamCount: integer("team_count").notNull(),
+  budget: integer("budget").notNull(),
+  auctionSpots: integer("auction_spots").notNull(),
+  rosterSize: integer("roster_size").notNull(),
+  minBid: integer("min_bid").notNull(),
+  bidStep: integer("bid_step").notNull(),
+  tieMinRaise: integer("tie_min_raise").notNull(),
+  nominationClockSec: integer("nomination_clock_sec"),
+  bidClockSec: integer("bid_clock_sec"),
+  tieClockSec: integer("tie_clock_sec"),
+  pickClockSec: integer("pick_clock_sec"),
+  earlyClose: boolean("early_close").notNull(),
+  maxTieRounds: integer("max_tie_rounds"),
+  tieFallback: tieFallbackEnum("tie_fallback").notNull(),
+  noBidAction: noBidActionEnum("no_bid_action").notNull(),
+  nominationOrder: nominationOrderEnum("nomination_order").notNull(),
+  /** "all" or a numeric string, mirroring the engine's `number | "all"`. */
+  revealTopN: text("reveal_top_n").notNull(),
+  pickExpiryAction: pickExpiryActionEnum("pick_expiry_action").notNull(),
+  brokeTeamsFillAtEnd: boolean("broke_teams_fill_at_end").notNull(),
+  nominatorMustBid: boolean("nominator_must_bid").notNull(),
+  /** Array of { name, positions, min, max }; null = position limits off. */
+  positionGroups: jsonb("position_groups"),
+});
+
+export const team = pgTable(
+  "team",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => league.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => user.id),
+    name: text("name").notNull(),
+    draftNumber: integer("draft_number").notNull(),
+  },
+  (t) => [uniqueIndex("team_league_draft_number_idx").on(t.leagueId, t.draftNumber)],
+);
+
+export const player = pgTable(
+  "player",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => league.id, { onDelete: "cascade" }),
+    mflId: text("mfl_id"),
+    name: text("name").notNull(),
+    position: text("position").notNull(),
+    nflTeam: text("nfl_team"),
+    byeWeek: integer("bye_week"),
+    status: text("status"),
+    custom: boolean("custom").notNull().default(false),
+  },
+  (t) => [
+    uniqueIndex("player_league_mfl_id_idx").on(t.leagueId, t.mflId).where(sql`${t.mflId} is not null`),
+    index("player_league_idx").on(t.leagueId),
+  ],
+);
+
+export const draft = pgTable("draft", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  leagueId: uuid("league_id")
+    .notNull()
+    .references(() => league.id, { onDelete: "cascade" }),
+  phase: draftPhaseEnum("phase").notNull().default("setup"),
+  auctionRound: integer("auction_round").notNull().default(0),
+  currentLotId: uuid("current_lot_id"),
+  /** Denormalized convenience column, derivable as picks.length + 1; not authoritative. */
+  currentPickNo: integer("current_pick_no"),
+  paused: boolean("paused").notNull().default(false),
+  breakEndsAt: timestamp("break_ends_at", { withTimezone: true }),
+  version: integer("version").notNull().default(0),
+  /**
+   * Pure scheduler/turn-tracking bookkeeping that has no natural row shape
+   * and no query value outside "reconstruct this exact DraftState" — see
+   * db/loadDraftState.ts and db/persistReduceResult.ts for the exact shape
+   * (EngineBookkeeping in db/engineState.ts).
+   */
+  engineState: jsonb("engine_state").notNull(),
+});
+
+export const lot = pgTable(
+  "lot",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => draft.id, { onDelete: "cascade" }),
+    round: integer("round").notNull(),
+    orderInRound: integer("order_in_round").notNull(),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id),
+    nominatedByTeamId: uuid("nominated_by_team_id")
+      .notNull()
+      .references(() => team.id),
+    state: lotStateEnum("state").notNull(),
+    tieRound: integer("tie_round").notNull().default(0),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    remainingMs: integer("remaining_ms"),
+    winnerTeamId: uuid("winner_team_id").references(() => team.id),
+    price: integer("price"),
+    /** Point-in-time snapshot per the engine's own semantics — not derivable, must be stored. */
+    eligibleTeamIds: jsonb("eligible_team_ids").notNull().default(sql`'[]'::jsonb`),
+    tiedTeamIds: jsonb("tied_team_ids").notNull().default(sql`'[]'::jsonb`),
+  },
+  (t) => [
+    index("lot_draft_round_idx").on(t.draftId, t.round, t.orderInRound),
+    // SPEC.md: "one open lot per draft at a time" — enforced at the DB level.
+    uniqueIndex("lot_one_open_per_draft_idx")
+      .on(t.draftId)
+      .where(sql`${t.state} not in ('queued', 'awarded', 'returnedToPool', 'cancelled')`),
+  ],
+);
+
+export const bid = pgTable(
+  "bid",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    lotId: uuid("lot_id")
+      .notNull()
+      .references(() => lot.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => team.id),
+    tieRound: integer("tie_round").notNull().default(0),
+    amount: integer("amount").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    superseded: boolean("superseded").notNull().default(false),
+  },
+  (t) => [index("bid_lot_tie_round_team_idx").on(t.lotId, t.tieRound, t.teamId, t.superseded)],
+);
+
+export const pick = pgTable(
+  "pick",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => draft.id, { onDelete: "cascade" }),
+    pickNo: integer("pick_no").notNull(),
+    round: integer("round").notNull(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => team.id),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => player.id),
+    source: pickSourceEnum("source").notNull(),
+    price: integer("price"),
+    madeAt: timestamp("made_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    // SPEC.md: "a player appears in at most one pick per draft" (unique index).
+    uniqueIndex("pick_draft_player_idx").on(t.draftId, t.playerId),
+    uniqueIndex("pick_draft_pick_no_idx").on(t.draftId, t.pickNo),
+  ],
+);
+
+export const auditEvent = pgTable(
+  "audit_event",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => draft.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    actorUserId: uuid("actor_user_id"),
+    type: text("type").notNull(),
+    payloadJson: jsonb("payload_json").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("audit_event_draft_seq_idx").on(t.draftId, t.seq)],
+);
