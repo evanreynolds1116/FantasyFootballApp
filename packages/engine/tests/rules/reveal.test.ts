@@ -74,4 +74,11 @@ describe("reveal", () => {
     const reveal = res.events.find((e) => e.type === "lot:reveal") as { bids: unknown[] };
     expect(reveal.bids).toHaveLength(1);
   });
+
+  it("clock:lotExpired is a no-op for an unknown or already-closed lot", () => {
+    const { state, ctx } = openLotFixture(3);
+    const res = applyLotExpired(state, { type: "clock:lotExpired", lotId: "not-a-real-lot" }, ctx);
+    expect(res.state).toBe(state);
+    expect(res.events).toEqual([]);
+  });
 });

@@ -135,4 +135,19 @@ describe("make-up rounds", () => {
     const res = applyMakeupPickExpired(started.state, { type: "clock:pickExpired", teamId: "t1" }, ctx);
     expect(res.events).toContainEqual(expect.objectContaining({ type: "pick:made", source: "makeup" }));
   });
+
+  it("pickExpiryAction = skip during make-up keeps the team on the clock via the shrinking-order recompute", () => {
+    const players = makePlayerPool("RB", 3);
+    const state: DraftState = makeState({
+      teamCount: 1,
+      players,
+      settings: { auctionSpots: 1, rosterSize: 1, positionGroups: null, pickExpiryAction: "skip" },
+    });
+    const ctx = makeCtx(1000);
+    const started = beginMakeup(state, ctx);
+    const res = applyMakeupPickExpired(started.state, { type: "clock:pickExpired", teamId: "t1" }, ctx);
+    expect(res.state.phase).toBe("makeup");
+    expect(res.state.snakePickTurnTeamId).toBe("t1");
+    expect(res.state.picks).toHaveLength(0);
+  });
 });

@@ -3,7 +3,7 @@ import type { DraftState, TeamId } from "../model/types.js";
 export function spentByTeam(state: DraftState, teamId: TeamId): number {
   return state.picks
     .filter((p) => p.teamId === teamId && p.price !== null)
-    .reduce((sum, p) => sum + (p.price ?? 0), 0);
+    .reduce((sum, p) => sum + (p.price as number), 0);
 }
 
 export function remainingBudget(state: DraftState, teamId: TeamId): number {

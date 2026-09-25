@@ -21,6 +21,74 @@ describe("reduce (top-level dispatcher)", () => {
     expect(res.events[0]).toMatchObject({ type: "draft:rejected", code: "INVALID_PHASE" });
   });
 
+  it("dispatches admin:setRevealTopN", () => {
+    const players = makePlayerPool("QB", 5);
+    const state: DraftState = makeState({ teamCount: 2, players });
+    const ctx = makeCtx(1000);
+    const res = reduce(state, { type: "admin:setRevealTopN", revealTopN: 1 }, ctx);
+    expect(res.state.settings.revealTopN).toBe(1);
+  });
+
+  it("dispatches admin:voidLot and admin:markPlayerUnavailable", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
+    const ctx = makeCtx(1000);
+    state = reduce(state, { type: "admin:start" }, ctx).state;
+    state = reduce(state, { type: "nominate", teamId: "t1", playerId: "qb1" }, ctx).state;
+    state = reduce(state, { type: "nominate", teamId: "t2", playerId: "qb2" }, ctx).state;
+    const lot = state.lots[0]!;
+    const voided = reduce(state, { type: "admin:voidLot", lotId: lot.id }, ctx);
+    expect(voided.state.lots.find((l) => l.id === lot.id)?.state).toBe("cancelled");
+
+    const marked = reduce(voided.state, { type: "admin:markPlayerUnavailable", playerId: "qb3" }, ctx);
+    expect(marked.state.unavailablePlayerIds).toContain("qb3");
+  });
+
+  it("dispatches clock:nominationExpired, clock:tieExpired, clock:pickExpired (wrong phase), and admin:addTime", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
+    const ctx = makeCtx(1000);
+    state = reduce(state, { type: "admin:start" }, ctx).state;
+
+    const nomExpired = reduce(state, { type: "clock:nominationExpired" }, ctx);
+    expect(nomExpired.events.some((e) => e.type === "nomination:made")).toBe(true);
+    state = nomExpired.state;
+
+    const pickExpiredWrongPhase = reduce(state, { type: "clock:pickExpired", teamId: "t1" }, ctx);
+    expect(pickExpiredWrongPhase.events[0]).toMatchObject({ type: "draft:rejected", code: "INVALID_PHASE" });
+
+    const addTime = reduce(state, { type: "admin:addTime", seconds: 10 }, ctx);
+    expect(addTime.state.nominationEndsAt).toBe(state.nominationEndsAt! + 10_000);
+
+    const tieExpiredNoop = reduce(state, { type: "clock:tieExpired", lotId: "not-a-lot" }, ctx);
+    expect(tieExpiredNoop.state).toBe(state);
+  });
+
+  it("dispatches pick:make and clock:pickExpired to the make-up phase handlers", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({
+      teamCount: 1,
+      players,
+      settings: { auctionSpots: 1, rosterSize: 2, positionGroups: null },
+    });
+    state = { ...state, phase: "makeup", makeupRound: 1, makeupRoundTurnsTaken: 0, snakePickTurnTeamId: "t1", snakePickEndsAt: 1000 };
+    const ctx = makeCtx(1000);
+    const res = reduce(state, { type: "pick:make", teamId: "t1", playerId: "qb1" }, ctx);
+    expect(res.events).toContainEqual(expect.objectContaining({ type: "pick:made", source: "makeup" }));
+  });
+
+  it("dispatches admin:resume and admin:break through the top-level entry point", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
+    const ctx = makeCtx(1000);
+    state = reduce(state, { type: "admin:start" }, ctx).state;
+    const broken = reduce(state, { type: "admin:break", minutes: 10 }, ctx);
+    expect(broken.state.paused).toBe(true);
+    expect(broken.state.breakEndsAt).toBe(ctx.now + 10 * 60_000);
+    const resumed = reduce(broken.state, { type: "admin:resume" }, ctx);
+    expect(resumed.state.paused).toBe(false);
+  });
+
   describe("pause gate", () => {
     function pausedState(): { state: DraftState; ctx: ReturnType<typeof makeCtx> } {
       const players = makePlayerPool("QB", 5);

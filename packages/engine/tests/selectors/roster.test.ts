@@ -82,4 +82,9 @@ describe("roster selectors", () => {
     // A hypothetical RB pick still leaves RB min unmet by 3, WR/TE unmet by 6, etc. with only 0 spots left.
     expect(remainingMinimumsReachable(state, "t1", "RB")).toBe(false);
   });
+
+  it("groupsBelowMinimum is always empty when position groups are off", () => {
+    const noLimits = createInitialState({ ...DEFAULT_SETTINGS, positionGroups: null }, teams, players);
+    expect(groupsBelowMinimum(noLimits, "t1")).toEqual([]);
+  });
 });

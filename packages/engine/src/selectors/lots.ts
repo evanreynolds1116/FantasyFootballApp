@@ -19,11 +19,6 @@ export function lotsInRound(state: DraftState, round: number): Lot[] {
   return state.lots.filter((l) => l.round === round);
 }
 
-export function isRoundComplete(state: DraftState, round: number): boolean {
-  const lots = lotsInRound(state, round);
-  return lots.length > 0 && lots.every(isTerminalLot);
-}
-
 export function isPlayerDrafted(state: DraftState, playerId: PlayerId): boolean {
   return state.picks.some((p) => p.playerId === playerId);
 }

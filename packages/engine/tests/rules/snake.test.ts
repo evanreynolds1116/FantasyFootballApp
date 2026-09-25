@@ -181,4 +181,14 @@ describe("snake draft phase", () => {
     expect(res.events).toContainEqual({ type: "draft:phase", phase: "complete" });
     expect(res.state.picks.filter((p) => p.teamId === "t2")).toHaveLength(5);
   });
+
+  it("clock:pickExpired is a no-op outside the snake phase or from a team not on the clock", () => {
+    const players = makePlayerPool("RB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 0, rosterSize: 2, positionGroups: null } });
+    const ctx = makeCtx(1000);
+    state = beginSnake(state, ctx).state;
+    const res = applyPickExpired(state, { type: "clock:pickExpired", teamId: "t2" }, ctx);
+    expect(res.state).toBe(state);
+    expect(res.events).toEqual([]);
+  });
 });

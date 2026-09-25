@@ -3,6 +3,9 @@ import { makeCtx, makePlayerPool, makeState, nominateFullRound } from "../helper
 import { applyAdminStart } from "../../src/rules/start.js";
 import { applyNominate } from "../../src/rules/nomination.js";
 import { applyAdminAddTime, applyAdminSetClocks, applyAdminSetRevealTopN } from "../../src/rules/clockAdmin.js";
+import { applyBidSubmit } from "../../src/rules/bidding.js";
+import { applyLotExpired } from "../../src/rules/reveal.js";
+import { beginSnake } from "../../src/rules/snake.js";
 import type { DraftState } from "../../src/model/types.js";
 
 function openLotFixture() {
@@ -67,6 +70,26 @@ describe("clock admin", () => {
     expect(started.nominationEndsAt).toBeNull();
     const res = applyAdminAddTime(started, { type: "admin:addTime", seconds: 15 }, ctx);
     expect(res.state).toBe(started);
+  });
+
+  it("admin:addTime extends the tie-rebid clock", () => {
+    const { state, ctx, lot } = openLotFixture();
+    let s = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyBidSubmit(s, { type: "bid:submit", teamId: "t2", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
+    const tieEndsAt = s.lots.find((l) => l.id === lot.id)!.endsAt!;
+    const res = applyAdminAddTime(s, { type: "admin:addTime", seconds: 15 }, ctx);
+    expect(res.state.lots.find((l) => l.id === lot.id)?.endsAt).toBe(tieEndsAt + 15_000);
+  });
+
+  it("admin:addTime extends the snake pick clock", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 0, rosterSize: 2, positionGroups: null } });
+    const ctx = makeCtx(1000);
+    state = beginSnake(state, ctx).state;
+    const before = state.snakePickEndsAt!;
+    const res = applyAdminAddTime(state, { type: "admin:addTime", seconds: 15 }, ctx);
+    expect(res.state.snakePickEndsAt).toBe(before + 15_000);
   });
 
   it("admin:setRevealTopN updates the setting and emits settings:revealTopN", () => {

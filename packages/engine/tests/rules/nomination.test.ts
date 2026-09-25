@@ -135,4 +135,36 @@ describe("nomination", () => {
     expect(state.nominationTurnTeamId).toBeNull();
     expect(state.lots.filter((l) => l.round === 1)).toHaveLength(2);
   });
+
+  it("defensively rejects nominate NOT_ELIGIBLE if the team on the clock somehow isn't eligible", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
+    const ctx = makeCtx(0);
+    state = applyAdminStart(state, { type: "admin:start" }, ctx).state;
+    // Force an inconsistent state: t1 is on the clock but already broke.
+    state = {
+      ...state,
+      picks: [{ id: "p1", pickNo: 1, round: 0, teamId: "t1", playerId: "sink", source: "auction", price: 997, madeAt: 0 }],
+      players: [...players, { id: "sink", name: "sink", position: "QB" }],
+    };
+    const res = applyNominate(state, { type: "nominate", teamId: "t1", playerId: "qb1" }, ctx);
+    expect(res.events[0]).toMatchObject({ type: "draft:rejected", code: "NOT_ELIGIBLE" });
+  });
+
+  it("clock:nominationExpired is a no-op outside the auction phase or with no team on the clock", () => {
+    const state = makeState({ teamCount: 2, players: makePlayerPool("QB", 5) });
+    const ctx = makeCtx(0);
+    const res = applyNominationExpired(state, { type: "clock:nominationExpired" }, ctx);
+    expect(res.state).toBe(state);
+    expect(res.events).toEqual([]);
+  });
+
+  it("clock:nominationExpired is a no-op if the player pool is exhausted", () => {
+    let state = makeState({ teamCount: 2, players: [], settings: { auctionSpots: 1, rosterSize: 1 } });
+    const ctx = makeCtx(0);
+    state = applyAdminStart(state, { type: "admin:start" }, ctx).state;
+    const res = applyNominationExpired(state, { type: "clock:nominationExpired" }, ctx);
+    expect(res.state).toBe(state);
+    expect(res.events).toEqual([]);
+  });
 });

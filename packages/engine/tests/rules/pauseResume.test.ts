@@ -3,6 +3,9 @@ import { makeCtx, makePlayerPool, makeState, nominateFullRound } from "../helper
 import { applyAdminStart } from "../../src/rules/start.js";
 import { applyNominate } from "../../src/rules/nomination.js";
 import { applyAdminBreak, applyAdminPause, applyAdminResume } from "../../src/rules/pauseResume.js";
+import { applyBidSubmit } from "../../src/rules/bidding.js";
+import { applyLotExpired } from "../../src/rules/reveal.js";
+import { beginSnake, applyPickMake } from "../../src/rules/snake.js";
 import type { DraftState } from "../../src/model/types.js";
 
 function openLotFixture() {
@@ -61,6 +64,66 @@ describe("pause / resume / break", () => {
     expect(res.state.breakEndsAt).toBe(ctx.now + 15 * 60_000);
     // Time passes well beyond the break, but nothing resumes it automatically.
     expect(res.state.paused).toBe(true);
+  });
+
+  it("pausing during a tie rebid freezes the tie clock", () => {
+    const { state, ctx, lot } = openLotFixture();
+    let s = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyBidSubmit(s, { type: "bid:submit", teamId: "t2", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
+    expect(s.lots.find((l) => l.id === lot.id)?.state).toBe("tieRebid");
+    const tieEndsAt = s.lots.find((l) => l.id === lot.id)!.endsAt!;
+    const laterCtx = { ...ctx, now: ctx.now + 5000 };
+    const res = applyAdminPause(s, { type: "admin:pause" }, laterCtx);
+    const pausedLot = res.state.lots.find((l) => l.id === lot.id)!;
+    expect(pausedLot.endsAt).toBeNull();
+    expect(pausedLot.remainingMs).toBe(tieEndsAt - laterCtx.now);
+    expect(pausedLot.state).toBe("tieRebid");
+  });
+
+  it("pausing during a snake pick freezes the pick clock; resume restores it as a snake pick, not a tie rebid", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 0, rosterSize: 2, positionGroups: null } });
+    const ctx = makeCtx(1000);
+    state = beginSnake(state, ctx).state;
+    const originalEndsAt = state.snakePickEndsAt!;
+    const laterCtx = { ...ctx, now: ctx.now + 5000 };
+    const paused = applyAdminPause(state, { type: "admin:pause" }, laterCtx);
+    expect(paused.state.snakePickEndsAt).toBeNull();
+    expect(paused.state.snakePickRemainingMs).toBe(originalEndsAt - laterCtx.now);
+
+    const resumeCtx = { ...laterCtx, now: laterCtx.now + 10_000 };
+    const resumed = applyAdminResume(paused.state, { type: "admin:resume" }, resumeCtx);
+    expect(resumed.state.snakePickEndsAt).toBe(resumeCtx.now + paused.state.snakePickRemainingMs!);
+    expect(resumed.state.snakePickRemainingMs).toBeNull();
+
+    const res = applyPickMake(resumed.state, { type: "pick:make", teamId: "t1", playerId: "qb1" }, resumeCtx);
+    expect(res.events[0]).not.toMatchObject({ type: "draft:rejected" });
+  });
+
+  it("pausing with no clock currently running is a harmless no-remainingMs freeze", () => {
+    const players = makePlayerPool("QB", 5);
+    const state: DraftState = makeState({
+      teamCount: 2,
+      players,
+      settings: { auctionSpots: 8, rosterSize: 17, nominationClockSec: "off" },
+    });
+    const ctx = makeCtx(1000);
+    const started = applyAdminStart(state, { type: "admin:start" }, ctx).state;
+    expect(started.nominationEndsAt).toBeNull();
+    const res = applyAdminPause(started, { type: "admin:pause" }, ctx);
+    expect(res.state.paused).toBe(true);
+    expect(res.events).toContainEqual({ type: "draft:paused", remainingMs: null, breakEndsAt: null });
+  });
+
+  it("admin:resume with nothing having been frozen is a harmless clear of the paused flag", () => {
+    const { state } = openLotFixture();
+    // Marked paused without anything actually being frozen first (defensive path).
+    const paused: DraftState = { ...state, paused: true };
+    const ctx = makeCtx(2_000_000);
+    const res = applyAdminResume(paused, { type: "admin:resume" }, ctx);
+    expect(res.state.paused).toBe(false);
+    expect(res.events).toContainEqual({ type: "draft:resumed", endsAt: null });
   });
 
   it("double admin:pause is a silent no-op", () => {

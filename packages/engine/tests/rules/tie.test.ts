@@ -206,4 +206,44 @@ describe("tie re-bid loop", () => {
     const res = applyTieRebid(s, { type: "tie:rebid", teamId: "t2", lotId: lot.id, amount: 65 }, ctx);
     expect(res.events).toContainEqual({ type: "lot:awarded", lotId: lot.id, teamId: "t2", playerId: lot.playerId, price: 65 });
   });
+
+  it("upserts a second tie:rebid from the same team within the same round", () => {
+    const { state, ctx, lot } = openLotFixture(3, { tieMinRaise: 5 });
+    let s = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyBidSubmit(s, { type: "bid:submit", teamId: "t2", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
+    s = applyTieRebid(s, { type: "tie:rebid", teamId: "t1", lotId: lot.id, amount: 60 }, ctx).state;
+    s = applyTieRebid(s, { type: "tie:rebid", teamId: "t1", lotId: lot.id, amount: 70 }, ctx).state;
+    const active = s.bids.filter((b) => b.teamId === "t1" && b.tieRound === 1 && !b.superseded);
+    expect(active).toHaveLength(1);
+    expect(active[0]?.amount).toBe(70);
+  });
+
+  it("rejects a tie:rebid submitted after the tie clock's endsAt", () => {
+    const { state, ctx, lot } = openLotFixture(3, { tieMinRaise: 5 });
+    let s = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyBidSubmit(s, { type: "bid:submit", teamId: "t2", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
+    const tieEndsAt = s.lots.find((l) => l.id === lot.id)!.endsAt!;
+    const lateCtx = { ...ctx, now: tieEndsAt + 1 };
+    const res = applyTieRebid(s, { type: "tie:rebid", teamId: "t1", lotId: lot.id, amount: 60 }, lateCtx);
+    expect(res.events[0]).toMatchObject({ type: "draft:rejected", code: "LOT_CLOSED" });
+  });
+
+  it("rejects a tie:rebid from a team that isn't part of the current tie", () => {
+    const { state, ctx, lot } = openLotFixture(3, { tieMinRaise: 5 });
+    let s = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyBidSubmit(s, { type: "bid:submit", teamId: "t2", lotId: lot.id, amount: 50 }, ctx).state;
+    s = applyBidSubmit(s, { type: "bid:submit", teamId: "t3", lotId: lot.id, amount: 20 }, ctx).state;
+    s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
+    const res = applyTieRebid(s, { type: "tie:rebid", teamId: "t3", lotId: lot.id, amount: 60 }, ctx);
+    expect(res.events[0]).toMatchObject({ type: "draft:rejected", code: "NOT_ELIGIBLE" });
+  });
+
+  it("clock:tieExpired is a no-op on a lot that isn't in a tie-rebid round", () => {
+    const { state, ctx, lot } = openLotFixture(3, { tieMinRaise: 5 });
+    const res = applyTieExpired(state, { type: "clock:tieExpired", lotId: lot.id }, ctx);
+    expect(res.state).toBe(state);
+    expect(res.events).toEqual([]);
+  });
 });
