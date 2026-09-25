@@ -1,0 +1,135 @@
+import type { DraftSettings } from "../settings/types.js";
+
+export type TeamId = string;
+export type PlayerId = string;
+export type LotId = string;
+
+export type Team = {
+  id: TeamId;
+  /** 1..N, immutable draft-order seat assigned before the draft starts. */
+  draftNumber: number;
+  name: string;
+};
+
+export type Player = {
+  id: PlayerId;
+  name: string;
+  position: string;
+  nflTeam?: string;
+};
+
+export type LotState =
+  | "queued"
+  | "open"
+  | "paused"
+  | "closed"
+  | "revealed"
+  | "tieRebid"
+  | "fallback"
+  | "awarded"
+  | "returnedToPool"
+  | "cancelled";
+
+export type Lot = {
+  id: LotId;
+  round: number;
+  orderInRound: number;
+  playerId: PlayerId;
+  nominatedByTeamId: TeamId;
+  state: LotState;
+  /** 0 pre-tie; increments once per rebid round. */
+  tieRound: number;
+  /** Absolute ms timestamp. null when the relevant clock is off or not running. */
+  endsAt: number | null;
+  /** Set on pause; ms remaining on whichever clock was running. */
+  remainingMs: number | null;
+  /** Snapshot at open: teams that could bid when the lot opened. */
+  eligibleTeamIds: TeamId[];
+  /** Populated once a tie is detected; shrinks each rebid round. */
+  tiedTeamIds: TeamId[];
+  winnerTeamId: TeamId | null;
+  price: number | null;
+};
+
+export type Bid = {
+  id: string;
+  lotId: LotId;
+  teamId: TeamId;
+  /** 0 for the initial sealed bid, 1+ for tie rebids. */
+  tieRound: number;
+  amount: number;
+  receivedAt: number;
+  superseded: boolean;
+};
+
+export type PickSource = "auction" | "snake" | "makeup" | "auto";
+
+export type Pick = {
+  id: string;
+  /** Global sequence across the whole draft. */
+  pickNo: number;
+  /** Meaning depends on phase (auction round / snake round / makeup round). */
+  round: number;
+  teamId: TeamId;
+  playerId: PlayerId;
+  source: PickSource;
+  /** Set for auction-sourced picks, null for snake/makeup/auto. */
+  price: number | null;
+  madeAt: number;
+};
+
+export type DraftPhase = "setup" | "auction" | "snake" | "makeup" | "complete";
+
+/** A deferred pick-clock-expiry "skip" awaiting an end-of-round catch-up turn. */
+export type DeferredPick = {
+  teamId: TeamId;
+  round: number;
+};
+
+export type DraftState = {
+  settings: DraftSettings;
+  teams: Team[];
+  /** Full pool; availability is derived from picks/lots/unavailablePlayerIds. */
+  players: Player[];
+  phase: DraftPhase;
+  paused: boolean;
+  breakEndsAt: number | null;
+  /** Increments on every state-changing reduce() call. */
+  version: number;
+  /** Monotonic counter used to mint deterministic, always-unique ids (never reused, even after undo). */
+  nextId: number;
+
+  auctionRound: number;
+  nominationTurnTeamId: TeamId | null;
+  nominationEndsAt: number | null;
+  nominationRemainingMs: number | null;
+
+  /** Append-only. Current lot = first non-terminal lot in round/order. */
+  lots: Lot[];
+  /** Append-only, includes superseded rows (audit trail). */
+  bids: Bid[];
+  /** Append-only; source of truth for budgets/rosters (derived, not stored). */
+  picks: Pick[];
+
+  snakePickTurnTeamId: TeamId | null;
+  snakePickEndsAt: number | null;
+  snakePickRemainingMs: number | null;
+  /** Current round number within phase "snake". */
+  snakeRound: number;
+  /** +1 ascending draftNumber, -1 descending; carried into makeup. */
+  snakeDirection: 1 | -1;
+  /** Count of this round's normal (non-catch-up) turns resolved so far. */
+  snakeRoundTurnsTaken: number;
+  /** Teams skipped by pick-clock expiry, owed an end-of-round catch-up turn. */
+  deferredPicks: DeferredPick[];
+
+  /** Current round number within phase "makeup". */
+  makeupRound: number;
+  /** Count of this makeup round's normal (non-catch-up) turns resolved so far. */
+  makeupRoundTurnsTaken: number;
+
+  /** Players marked unavailable by the commissioner (admin:markPlayerUnavailable). */
+  unavailablePlayerIds: PlayerId[];
+
+  lastAwardOrPick: { kind: "award" | "pick"; lotId?: LotId; pickId: string } | null;
+};
