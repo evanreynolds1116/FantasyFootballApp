@@ -6,3 +6,5 @@ export * from "./actions/types.js";
 export * from "./events/types.js";
 export * from "./errors.js";
 export type { Ctx } from "./clock.js";
+export { reduce } from "./reduce.js";
+export type { ReduceResult } from "./rules/result.js";

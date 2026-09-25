@@ -1,0 +1,81 @@
+import type { Action } from "../actions/types.js";
+import type { Ctx } from "../clock.js";
+import { bumpVersion } from "../model/state.js";
+import type { DraftState } from "../model/types.js";
+import { currentLot } from "../selectors/lots.js";
+import { eligibleTeamIdsForPlayer } from "../selectors/eligibility.js";
+import type { Event } from "../events/types.js";
+import { ok, type ReduceResult } from "./result.js";
+
+/** Freezes whichever single clock is currently running, storing its remainingMs. Returns the remaining ms captured, if any. */
+function freezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; remainingMs: number | null } {
+  const lot = currentLot(state);
+  if (lot && (lot.state === "open" || lot.state === "tieRebid") && lot.endsAt !== null) {
+    const remainingMs = lot.endsAt - ctx.now;
+    const updatedLot = { ...lot, endsAt: null, remainingMs };
+    return { state: { ...state, lots: state.lots.map((l) => (l.id === lot.id ? updatedLot : l)) }, remainingMs };
+  }
+  if (state.nominationEndsAt !== null) {
+    const remainingMs = state.nominationEndsAt - ctx.now;
+    return { state: { ...state, nominationEndsAt: null, nominationRemainingMs: remainingMs }, remainingMs };
+  }
+  if (state.snakePickEndsAt !== null) {
+    const remainingMs = state.snakePickEndsAt - ctx.now;
+    return { state: { ...state, snakePickEndsAt: null, snakePickRemainingMs: remainingMs }, remainingMs };
+  }
+  return { state, remainingMs: null };
+}
+
+/** Restores whichever clock was frozen, computing a fresh endsAt from now + remainingMs. Returns the restored endsAt, if any. */
+function unfreezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; endsAt: number | null } {
+  const lot = currentLot(state);
+  if (lot && (lot.state === "open" || lot.state === "tieRebid" || lot.state === "paused") && lot.remainingMs !== null) {
+    const endsAt = ctx.now + lot.remainingMs;
+    // A lot reopened by admin:undo sits in "paused" state (see undo.ts) and
+    // resumes into live bidding, same as a lot frozen mid-bid by admin:pause.
+    // Its eligibility snapshot is refreshed since the undo may have restored
+    // budget/roster room for teams that weren't eligible before.
+    const wasUndoReopen = lot.state === "paused";
+    const updatedLot = {
+      ...lot,
+      state: wasUndoReopen ? ("open" as const) : lot.state,
+      eligibleTeamIds: wasUndoReopen ? eligibleTeamIdsForPlayer(state, lot.playerId) : lot.eligibleTeamIds,
+      endsAt,
+      remainingMs: null,
+    };
+    return { state: { ...state, lots: state.lots.map((l) => (l.id === lot.id ? updatedLot : l)) }, endsAt };
+  }
+  if (state.nominationRemainingMs !== null) {
+    const endsAt = ctx.now + state.nominationRemainingMs;
+    return { state: { ...state, nominationEndsAt: endsAt, nominationRemainingMs: null }, endsAt };
+  }
+  if (state.snakePickRemainingMs !== null) {
+    const endsAt = ctx.now + state.snakePickRemainingMs;
+    return { state: { ...state, snakePickEndsAt: endsAt, snakePickRemainingMs: null }, endsAt };
+  }
+  return { state, endsAt: null };
+}
+
+export function applyAdminPause(state: DraftState, _action: Extract<Action, { type: "admin:pause" }>, ctx: Ctx): ReduceResult {
+  if (state.paused) return ok(state, []);
+  const frozen = freezeCurrentClock(state, ctx);
+  const nextState = bumpVersion({ ...frozen.state, paused: true });
+  const events: Event[] = [{ type: "draft:paused", remainingMs: frozen.remainingMs, breakEndsAt: nextState.breakEndsAt }];
+  return { state: nextState, events };
+}
+
+export function applyAdminResume(state: DraftState, _action: Extract<Action, { type: "admin:resume" }>, ctx: Ctx): ReduceResult {
+  if (!state.paused) return ok(state, []);
+  const restored = unfreezeCurrentClock(state, ctx);
+  const nextState = bumpVersion({ ...restored.state, paused: false, breakEndsAt: null });
+  const events: Event[] = [{ type: "draft:resumed", endsAt: restored.endsAt }];
+  return { state: nextState, events };
+}
+
+export function applyAdminBreak(state: DraftState, action: Extract<Action, { type: "admin:break" }>, ctx: Ctx): ReduceResult {
+  const frozen = state.paused ? { state, remainingMs: null } : freezeCurrentClock(state, ctx);
+  const breakEndsAt = ctx.now + action.minutes * 60_000;
+  const nextState = bumpVersion({ ...frozen.state, paused: true, breakEndsAt });
+  const events: Event[] = [{ type: "draft:paused", remainingMs: frozen.remainingMs, breakEndsAt }];
+  return { state: nextState, events };
+}
