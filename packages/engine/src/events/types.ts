@@ -1,6 +1,6 @@
 import type { Action } from "../actions/types.js";
 import type { ErrorCode } from "../errors.js";
-import type { DraftPhase, LotId, PickSource, PlayerId, TeamId } from "../model/types.js";
+import type { CommishEdit, DraftPhase, LotId, PickSource, PlayerId, TeamId } from "../model/types.js";
 import type { ClockSetting, TieFallback } from "../settings/types.js";
 
 export type RevealedBid = { teamId: TeamId; amount: number };
@@ -56,6 +56,8 @@ export type Event =
   | { type: "queue:updated"; teamId: TeamId; playerIds: PlayerId[] }
   | { type: "draft:undo"; undone: { kind: "award" | "pick"; teamId: TeamId; playerId: PlayerId } }
   | { type: "player:unavailable"; playerId: PlayerId }
+  /** Every commissioner edit, for the on-screen notice and draft log. */
+  | { type: "commish:edit"; edit: CommishEdit }
   // Phase-2 note: this echoes the full original Action, which may include a
   // bid amount. It must be delivered only to the acting team as a private
   // ack, never broadcast, or it becomes a bid-secrecy leak.

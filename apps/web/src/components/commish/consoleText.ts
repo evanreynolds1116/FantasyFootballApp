@@ -1,4 +1,4 @@
-import { currentLot } from "@draft-app/engine";
+import { currentLot, nextPickNo } from "@draft-app/engine";
 import type { DraftSnapshot } from "../../lib/contracts";
 import { asEngineState } from "../../store/selectors";
 
@@ -46,9 +46,9 @@ export function phaseSummary(snapshot: DraftSnapshot): string {
       return lot ? `Auction · R${lot.round} · Lot ${lot.orderInRound}` : `Auction · R${snapshot.auctionRound}`;
     }
     case "snake":
-      return `Snake · R${snapshot.snakeRound} · Pick ${snapshot.picks.length + 1}`;
+      return `Snake · R${snapshot.snakeRound} · Pick ${nextPickNo(asEngineState(snapshot))}`;
     case "makeup":
-      return `Make-up · R${snapshot.makeupRound} · Pick ${snapshot.picks.length + 1}`;
+      return `Make-up · R${snapshot.makeupRound} · Pick ${nextPickNo(asEngineState(snapshot))}`;
     case "complete":
       return "Draft complete";
   }

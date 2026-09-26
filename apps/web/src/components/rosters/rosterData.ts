@@ -88,7 +88,8 @@ export function acquiredLabel(pick: Pick): string {
     case "auction":
       return `$${pick.price ?? 0}`;
     case "snake":
-      return `Snake R${pick.round}`;
+      // Round 0: put in an open snake spot by the commissioner, not drafted in a round.
+      return pick.round === 0 ? "Added by commissioner" : `Snake R${pick.round}`;
     case "makeup":
       return `Make-up R${pick.round}`;
     case "auto":

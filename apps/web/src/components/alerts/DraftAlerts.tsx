@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useDraft } from "../../store/DraftProvider";
+import { useDraft, useResumeHold } from "../../store/DraftProvider";
 import { canVibrate, fireCue, loadPrefs, savePrefs, unlockAudio, type AlertPrefs } from "./cues";
 import { myTurn } from "./myTurn";
 
@@ -18,6 +18,7 @@ function useDraftAlerts(prefs: AlertPrefs) {
   prefsRef.current = prefs;
   const turn = snapshot ? myTurn(snapshot) : null;
   const paused = snapshot?.paused ?? false;
+  const hold = useResumeHold();
 
   // Audio can only start after a gesture; the first tap or key anywhere unlocks it.
   useEffect(() => {
@@ -46,7 +47,8 @@ function useDraftAlerts(prefs: AlertPrefs) {
   useEffect(() => {
     if (turnKey === null || endsAt === null || paused) return;
     const check = () => {
-      const left = endsAt - Date.now();
+      // During the back-in countdown the clock hasn't started, so time left is measured from its end.
+      const left = endsAt - Math.max(Date.now(), hold ?? 0);
       if (armed.current?.key !== turnKey) armed.current = { key: turnKey, warned: left <= WARNING_MS };
       if (!armed.current.warned && left <= WARNING_MS && left > 0) {
         armed.current.warned = true;
@@ -56,7 +58,7 @@ function useDraftAlerts(prefs: AlertPrefs) {
     check();
     const id = setInterval(check, 250);
     return () => clearInterval(id);
-  }, [turnKey, endsAt, paused]);
+  }, [turnKey, endsAt, paused, hold]);
 
   const lastReveal = useRef<string | null>(null);
   const myTeamId = snapshot?.myTeamId ?? null;

@@ -14,7 +14,7 @@ import { asEngineState } from "../../store/selectors";
  */
 export function RevealScreen({ reveal }: { reveal: RevealPayload }) {
   const { snapshot } = useDraft();
-  const { label: dismissLabel } = useCountdown(reveal.until, false);
+  const { label: dismissLabel } = useCountdown(reveal.until, false, { ignoreHold: true });
 
   if (!snapshot) return null;
   const state = asEngineState(snapshot);

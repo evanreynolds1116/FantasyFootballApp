@@ -37,6 +37,8 @@ export function createInitialState(
     makeupRoundTurnsTaken: 0,
 
     unavailablePlayerIds: [],
+    commishLog: [],
+    resumeHoldUntil: null,
     queues: {},
 
     lastAwardOrPick: null,

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { makeCtx, makePlayerPool, makeState, nominateFullRound } from "../helpers.js";
 import { applyAdminStart } from "../../src/rules/start.js";
 import { applyNominate } from "../../src/rules/nomination.js";
-import { applyAdminBreak, applyAdminPause, applyAdminResume } from "../../src/rules/pauseResume.js";
+import { applyAdminBreak, applyAdminPause, applyAdminResume, BACK_IN_MS } from "../../src/rules/pauseResume.js";
 import { applyBidSubmit } from "../../src/rules/bidding.js";
 import { applyLotExpired } from "../../src/rules/reveal.js";
 import { beginSnake, applyPickMake } from "../../src/rules/snake.js";
@@ -52,7 +52,7 @@ describe("pause / resume / break", () => {
     const res = applyAdminResume(s, { type: "admin:resume" }, resumeCtx);
     expect(res.state.paused).toBe(false);
     const resumedLot = res.state.lots.find((l) => l.id === lot.id)!;
-    expect(resumedLot.endsAt).toBe(resumeCtx.now + remainingMs);
+    expect(resumedLot.endsAt).toBe(resumeCtx.now + BACK_IN_MS + remainingMs);
     expect(resumedLot.remainingMs).toBeNull();
     expect(res.events).toContainEqual({ type: "draft:resumed", endsAt: resumedLot.endsAt });
   });
@@ -94,7 +94,7 @@ describe("pause / resume / break", () => {
 
     const resumeCtx = { ...laterCtx, now: laterCtx.now + 10_000 };
     const resumed = applyAdminResume(paused.state, { type: "admin:resume" }, resumeCtx);
-    expect(resumed.state.snakePickEndsAt).toBe(resumeCtx.now + paused.state.snakePickRemainingMs!);
+    expect(resumed.state.snakePickEndsAt).toBe(resumeCtx.now + BACK_IN_MS + paused.state.snakePickRemainingMs!);
     expect(resumed.state.snakePickRemainingMs).toBeNull();
 
     const res = applyPickMake(resumed.state, { type: "pick:make", teamId: "t1", playerId: "qb1" }, resumeCtx);

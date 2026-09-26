@@ -21,6 +21,8 @@ export type EngineBookkeeping = {
   makeupRound: number;
   makeupRoundTurnsTaken: number;
   unavailablePlayerIds: string[];
+  commishLog: DraftState["commishLog"];
+  resumeHoldUntil: number | null;
   lastAwardOrPick: DraftState["lastAwardOrPick"];
 };
 
@@ -40,6 +42,8 @@ export function extractBookkeeping(state: DraftState): EngineBookkeeping {
     makeupRound: state.makeupRound,
     makeupRoundTurnsTaken: state.makeupRoundTurnsTaken,
     unavailablePlayerIds: state.unavailablePlayerIds,
+    commishLog: state.commishLog,
+    resumeHoldUntil: state.resumeHoldUntil,
     lastAwardOrPick: state.lastAwardOrPick,
   };
 }

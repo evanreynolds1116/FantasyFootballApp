@@ -9,7 +9,7 @@ import { availablePlayerIds, isPlayerAvailable } from "../selectors/lots.js";
 import { directionForRound, makeupOrderForRound, teamsByDraftNumber } from "../selectors/order.js";
 import { remainingMinimumsReachable, wouldExceedPositionMax } from "../selectors/roster.js";
 import type { Event } from "../events/types.js";
-import { awardNonAuctionPick } from "./award.js";
+import { awardNonAuctionPick, nextPickNo } from "./award.js";
 import { ok, reject, type ReduceResult } from "./result.js";
 
 /** Teams that ended the auction with fewer than settings.auctionSpots auction-won picks. Frozen once auction ends. */
@@ -24,7 +24,7 @@ function stillNeedingMakeup(state: DraftState): TeamId[] {
 function emitPickTurn(state: DraftState, teamId: TeamId, ctx: Ctx): ReduceResult {
   const endsAt = endsAtFor(ctx.now, state.settings.pickClockSec);
   const nextState = bumpVersion({ ...state, snakePickTurnTeamId: teamId, snakePickEndsAt: endsAt, snakePickRemainingMs: null });
-  const events: Event[] = [{ type: "pick:turn", teamId, pickNo: state.picks.length + 1, endsAt }];
+  const events: Event[] = [{ type: "pick:turn", teamId, pickNo: nextPickNo(state), endsAt }];
   return { state: nextState, events };
 }
 

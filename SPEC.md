@@ -194,7 +194,8 @@ stateDiagram-v2
 
 - **Pause anytime:** during a nomination, an open lot, a tie re-bid or a snake pick. The clock freezes and bid entry locks for everyone; bids already submitted stay hidden and stay in.
 - **Timed break:** e.g. "Break for 15 minutes" pauses the draft and shows a countdown on every screen and the big board; the draft does not resume by itself — the commissioner taps Resume, followed by a 10-second "back in" countdown.
-- **Resume:** the clock picks up from the time that was left.
+- **Resume:** every resume (after a pause or a break) starts a 10-second "back in" countdown on every screen; then the clock picks up from the time that was left. Pausing again during the countdown banks only the real clock time.
+- **Edit budget/roster:** the commissioner can adjust a team's budget by ±$ with a reason (never below $0; taking money away waits while that team has a bid or pass in on the lot being decided), take a player off a roster (back to the pool, any auction price refunded), or put an available player into a spot the team has open — an auction spot at a price, or a snake spot that no remaining turn will fill (one opens when a snake pick is removed). Adding never pushes a roster past its size or a position maximum. Roster edits aren't allowed during the make-up round. Undo never targets a commissioner-added player. Every edit is announced on every screen and kept in the draft log.
 - **Change clock lengths mid-draft:** anytime from the commissioner console. New lengths apply from the next nomination, lot, tie round or pick; the running clock is unchanged (use +15 s). Every change is logged and announced on screen.
 
 ## Data model
@@ -213,6 +214,7 @@ Budgets and roster counts are derived from awards and picks rather than stored a
 | `bid` | id, lot_id, team_id, tie_round, amount, received_at, superseded | Latest non-superseded row per team per tie_round counts |
 | `pick` | id, draft_id, pick_no, round, team_id, player_id, source (auction/snake/makeup/auto), price, made_at | Auction awards also write a pick for one unified roster view |
 | `team_queue` | team_id, player_ids (ordered json array), updated_at | One ranked queue per team; taken players stay in the list but are skipped. Never sent to anyone but the team's manager |
+| (engine state) | commish_log (every commissioner edit: budget, remove, assign, void, unavailable, available), resume_hold_until | Stored with the draft's engine bookkeeping; budget adjustments count toward remaining budget |
 | `audit_event` | id, draft_id, seq, actor_user_id, type, payload_json, created_at | Append-only; powers undo, replay and disputes |
 
 **Derived values:** remaining budget = budget − sum(auction prices); auction spots left; max bid = remaining budget (no forced reserve); broke = remaining budget below the minimum bid and auction spots left > 0.
@@ -285,6 +287,11 @@ Every server message carries the draft `version` so a client that misses a messa
 | `admin:addTime` | seconds | Commissioner |
 | `admin:setClocks` | nomination, bid, tie, pick seconds | Commissioner |
 | `admin:resolveTie` | lotId, teamId | Commissioner (only if fallback = commissioner) |
+| `admin:voidLot` | lotId (open or in a tie re-bid) | Commissioner |
+| `admin:markPlayerUnavailable` / `admin:markPlayerAvailable` | playerId | Commissioner |
+| `admin:adjustBudget` | teamId, amount (±whole dollars), reason | Commissioner |
+| `admin:removePick` | pickId | Commissioner |
+| `admin:assignPlayer` | teamId, playerId, slot (auction/snake), price (auction spot) | Commissioner |
 
 Every intent gets an acknowledgement: `ok` or an error code (`BID_TOO_LOW`, `OVER_BUDGET`, `LOT_CLOSED`, `NOT_ELIGIBLE`, `POSITION_LIMIT`, `NOT_YOUR_TURN`, `PLAYER_TAKEN`, `DRAFT_PAUSED`).
 
@@ -352,7 +359,7 @@ Each case needs a unit test in the rules engine.
 | Two tabs open for the same team | Both stay in sync; latest bid wins |
 | Commissioner undoes an award | Only the most recent award/pick; current lot is paused, pick removed, budget restored, player back in the pool; logged |
 | Player nominated who's already taken | Rejected (`PLAYER_TAKEN`) by a unique constraint, not just UI |
-| Late-breaking injury during the draft | Commissioner can mark a player unavailable; an open lot can be voided and re-nominated |
+| Late-breaking injury during the draft | Commissioner can mark a player unavailable (and available again); a lot being bid on or in a tie re-bid can be voided — nobody gets the player, no bid is revealed, and the player can be re-nominated unless marked unavailable. Everyone sees a notice |
 
 ## Non-functional requirements
 

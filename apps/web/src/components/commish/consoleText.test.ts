@@ -58,7 +58,7 @@ describe("phaseSummary", () => {
   });
 
   it("counts the overall pick in the snake", () => {
-    const s = snapshot({ phase: "snake", snakeRound: 2, picks: [awardPick] });
+    const s = snapshot({ phase: "snake", snakeRound: 2, picks: [{ ...awardPick, pickNo: 1 }] });
     expect(phaseSummary(s)).toBe("Snake · R2 · Pick 2");
   });
 });

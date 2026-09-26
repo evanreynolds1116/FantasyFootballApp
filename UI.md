@@ -99,6 +99,10 @@ The same screens and rules on every device; only the layout changes.
 - Timed break: 5, 10, 15, 30 minutes.
 - Clock lengths with −/+ steppers for nominate, bid, tie re-bid and snake pick; note "Apply from the next lot".
 - Undo last result, in warn style, naming exactly what it undoes; confirm before acting.
+- Injuries & voiding a lot: "Void this lot · player" (warn, confirm with Keep it / Void, back to pool / Void & mark injured); search to mark a player unavailable; unavailable players listed with "Mark available".
+- Edit rosters & budgets: team number chips; budget left and roster count; adjust budget (± amount + reason, button previews "$960 → $985"); roster list with Remove (inline confirm naming the refund); "Add a player" into an open spot (auction spot with a price, or snake spot), disabled with the reason when there's none.
+- Your changes: every commissioner edit, newest first, with the time.
+- Every edit shows a "Commissioner" notice for 8 s on every screen and the big board; the results screen's log tab lists them under "Commissioner changes".
 - Who's connected: one tile per team, offline teams in warn style with a mark and a count.
 - Never any control to bid, nominate or pick for another team; never shows sealed bid amounts.
 
@@ -112,7 +116,7 @@ The same screens and rules on every device; only the layout changes.
 - During reveals it shows the reveal card; during a break, a full-screen break countdown; in the snake phase, the snake board with the team on the clock.
 
 ## States every screen must handle
-- **Paused / break:** a banner "Draft paused" or a break countdown; all inputs disabled; clocks frozen.
+- **Paused / break:** a banner "Draft paused" or a break countdown; all inputs disabled; clocks frozen. After Resume, an amber "Back in… 10" banner while every clock holds.
 - **Reconnecting:** a small banner "Reconnecting…"; inputs disabled until the snapshot arrives.
 - **Not your turn / not eligible:** controls disabled with the reason in words.
 - **Last 10 seconds:** clock turns warn color; a warning sound/vibration if you still have to act (FR-20).

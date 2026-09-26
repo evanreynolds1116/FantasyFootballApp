@@ -8,37 +8,43 @@ import { ok, type ReduceResult } from "./result.js";
 
 /** Freezes whichever single clock is currently running, storing its remainingMs. Returns the remaining ms captured, if any. */
 export function freezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; remainingMs: number | null } {
+  // Pausing during a "back in" countdown: the unused part of the countdown isn't clock time, so it isn't banked.
+  const from = Math.max(ctx.now, state.resumeHoldUntil ?? 0);
+  const cleared = { ...state, resumeHoldUntil: null };
   const lot = currentLot(state);
   if (lot && (lot.state === "open" || lot.state === "tieRebid") && lot.endsAt !== null) {
-    const remainingMs = lot.endsAt - ctx.now;
+    const remainingMs = lot.endsAt - from;
     const updatedLot = { ...lot, endsAt: null, remainingMs };
-    return { state: { ...state, lots: state.lots.map((l) => (l.id === lot.id ? updatedLot : l)) }, remainingMs };
+    return { state: { ...cleared, lots: state.lots.map((l) => (l.id === lot.id ? updatedLot : l)) }, remainingMs };
   }
   if (state.nominationEndsAt !== null) {
-    const remainingMs = state.nominationEndsAt - ctx.now;
-    return { state: { ...state, nominationEndsAt: null, nominationRemainingMs: remainingMs }, remainingMs };
+    const remainingMs = state.nominationEndsAt - from;
+    return { state: { ...cleared, nominationEndsAt: null, nominationRemainingMs: remainingMs }, remainingMs };
   }
   if (state.snakePickEndsAt !== null) {
-    const remainingMs = state.snakePickEndsAt - ctx.now;
-    return { state: { ...state, snakePickEndsAt: null, snakePickRemainingMs: remainingMs }, remainingMs };
+    const remainingMs = state.snakePickEndsAt - from;
+    return { state: { ...cleared, snakePickEndsAt: null, snakePickRemainingMs: remainingMs }, remainingMs };
   }
-  return { state, remainingMs: null };
+  return { state: cleared, remainingMs: null };
 }
 
-/** Restores whichever clock was frozen, computing a fresh endsAt from now + remainingMs. Returns the restored endsAt, if any. */
-function unfreezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; endsAt: number | null } {
+/** SPEC: Resume is followed by a 10-second "back in" countdown before the clock picks up. */
+export const BACK_IN_MS = 10_000;
+
+/** Restores whichever clock was frozen, computing a fresh endsAt from `start` (now + the back-in countdown) + remainingMs. Returns the restored endsAt, if any. */
+function unfreezeCurrentClock(state: DraftState, start: number): { state: DraftState; endsAt: number | null } {
   const lot = currentLot(state);
   if (lot && (lot.state === "open" || lot.state === "tieRebid") && lot.remainingMs !== null) {
-    const endsAt = ctx.now + lot.remainingMs;
+    const endsAt = start + lot.remainingMs;
     const updatedLot = { ...lot, endsAt, remainingMs: null };
     return { state: { ...state, lots: state.lots.map((l) => (l.id === lot.id ? updatedLot : l)) }, endsAt };
   }
   if (state.nominationRemainingMs !== null) {
-    const endsAt = ctx.now + state.nominationRemainingMs;
+    const endsAt = start + state.nominationRemainingMs;
     return { state: { ...state, nominationEndsAt: endsAt, nominationRemainingMs: null }, endsAt };
   }
   if (state.snakePickRemainingMs !== null) {
-    const endsAt = ctx.now + state.snakePickRemainingMs;
+    const endsAt = start + state.snakePickRemainingMs;
     return { state: { ...state, snakePickEndsAt: endsAt, snakePickRemainingMs: null }, endsAt };
   }
   return { state, endsAt: null };
@@ -54,8 +60,10 @@ export function applyAdminPause(state: DraftState, _action: Extract<Action, { ty
 
 export function applyAdminResume(state: DraftState, _action: Extract<Action, { type: "admin:resume" }>, ctx: Ctx): ReduceResult {
   if (!state.paused) return ok(state, []);
-  const restored = unfreezeCurrentClock(state, ctx);
-  const nextState = bumpVersion({ ...restored.state, paused: false, breakEndsAt: null });
+  // Every resume, not just after a timed break: nobody gets caught away from their phone.
+  const resumeHoldUntil = ctx.now + BACK_IN_MS;
+  const restored = unfreezeCurrentClock(state, resumeHoldUntil);
+  const nextState = bumpVersion({ ...restored.state, paused: false, breakEndsAt: null, resumeHoldUntil });
   const events: Event[] = [{ type: "draft:resumed", endsAt: restored.endsAt }];
   return { state: nextState, events };
 }

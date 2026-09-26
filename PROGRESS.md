@@ -7,8 +7,9 @@ secrecy, make-up turn order, a server crash, persistence latency), added a
 Pass option to auction bidding, wrote the README, made a screenshot walkthrough
 for the league, ran a manual test (user as commissioner + 11 bots), and added a
 live "nominated this round" list to the nominate screen and big board.
-Then (same day) built the watchlist/queue (FR-19) and sounds and vibration
-(FR-20).
+Then (same day) built the watchlist/queue (FR-19), sounds and vibration
+(FR-20), and closed the commissioner console gaps (edit budget/roster, void
+lot, injuries, 10-second "back in" countdown).
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -16,12 +17,12 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-214 tests, full 12-team scripted draft acceptance test. Committed.
+234 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests (now 35) including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 37) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
 **Phase 3 — UI (`apps/web`)**: every screen in SPEC's table is built and
@@ -135,6 +136,35 @@ architecture, the stack, setup and the API.
   auto-pick the first queued player who fits the roster, each falling back
   to the old best-available rule. Verified live in headless Chrome
   (lobby queue → auto-nominate → snake auto-pick), no page errors.
+- **Commissioner edits** (FR-14 + SPEC's late-injury edge case,
+  `components/commish/LotAndPlayersPanel.tsx`, `RosterEditPanel.tsx`,
+  `CommishLogPanel.tsx`). Decisions from the user: budget *and* roster edits,
+  back-in countdown on *every* resume, void during ties too, mark available
+  again, and tell the league.
+  - Engine: `commishLog` in DraftState (budget/remove/assign/void/
+    unavailable/available) — budget entries count in `remainingBudget`.
+    New actions `admin:adjustBudget` (± with reason, never below $0, no
+    taking money while that team has a bid/pass in on the current lot),
+    `admin:removePick` (back to pool, auction price refunded, its lot marked
+    returnedToPool), `admin:assignPlayer` (only into an open spot from
+    `openRosterSlots`: auction spot at a price, or a snake spot no remaining
+    turn will fill), `admin:markPlayerAvailable`; `admin:voidLot` now also
+    works in a tie re-bid. Roster edits are refused during make-up (turn
+    order there depends on who still owes a pick). Undo skips
+    commissioner-added picks. Pick numbers are max + 1 (`nextPickNo`) so a
+    removal can't cause a duplicate. Every edit emits `commish:edit`.
+  - Back-in: Resume sets `resumeHoldUntil` = now + 10 s and pushes every
+    clock back by it; pausing again banks only real clock time. Clients hold
+    the clock readout (`useCountdown` reads the hold) and show an amber
+    "Back in… N" banner.
+  - Server: `commishLog`/`resumeHoldUntil` in the engine bookkeeping jsonb
+    (older drafts default to empty), new intent schemas (commissioner only).
+    `test/commish-edits.test.ts`.
+  - Web: an 8 s "Commissioner" notice on every screen and the big board;
+    the console's new panels; "Your changes" log; results log tab lists
+    "Commissioner changes"; "spent at auction" now sums prices (adjustments
+    aren't spending). Verified live through the UI in headless Chrome, no
+    page errors.
 - **Sounds and vibration** (FR-20, `components/alerts/`) — a bell in the
   draft header opens Sounds / Vibration switches (localStorage, per device;
   vibration hidden where unsupported, e.g. iPhone) and a Test button. Cues,
@@ -331,7 +361,7 @@ Walkthrough, manual test and nominations session (2026-09-26):
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
   data, CSV parsing, rules summary, start checks, results log/CSV,
-  nomination slots / unavailable reasons, whose turn it is — 45 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
+  nomination slots / unavailable reasons, whose turn it is, commissioner edit text — 48 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
 - **Bid acks under a rush still exceed SPEC's 300 ms** for the last of 12
   simultaneous bidders (~0.7 s) because actions are persisted one at a time
   per draft and each save is ~2 round trips to the remote dev DB. A database
@@ -345,10 +375,10 @@ Walkthrough, manual test and nominations session (2026-09-26):
   auction leaves the draft in the snake. SPEC is silent; not handled.
 - **Undoing a snake pick doesn't pause** and doesn't give the team its turn
   back — unchanged from phase 1; SPEC only spells out the award case.
-- **Console gaps vs SPEC:** no edit budget/roster (no server intent, and how
-  an edit is recorded is a rules decision to ask about), no void lot / mark
-  player unavailable buttons (server intents exist), no 10-second "back in"
-  countdown after a break (engine doesn't do it).
+- **Commissioner roster edits are blocked during the make-up round**, and
+  adding a player only fills a spot the team has open — by design, so no
+  roster can end up over size. Edits aren't undoable; fix one with a
+  counter-edit.
 
 ## What's left
 
@@ -363,8 +393,7 @@ In rough priority order:
 3. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
    Decide whether the dev login is acceptable for it (anyone who types
    someone's email can sign in as them) or magic links come first.
-4. The console gaps listed above.
-5. Real auth, a server CSV export route, settings-editing
+4. Real auth, a server CSV export route, settings-editing
    after creation — all previously deferred to phase 3/4, still deferred.
 
 ## Mock draft runs
@@ -389,7 +418,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the sounds/vibration commit. Note `pnpm run typecheck`
+  packages as of the commissioner-edits commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with

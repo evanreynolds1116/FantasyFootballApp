@@ -94,6 +94,23 @@ export type Pick = {
 
 export type DraftPhase = "setup" | "auction" | "snake" | "makeup" | "complete";
 
+/** Which kind of roster spot a commissioner-added player fills. */
+export type RosterSlot = "auction" | "snake";
+
+/**
+ * One commissioner change, in order (SPEC FR-14 "edit budget/roster" and the
+ * late-injury edge case). Public: everyone sees these in the draft log.
+ * Budget adjustments here are part of every team's remaining budget.
+ */
+export type CommishEdit = { id: string; at: number } & (
+  | { kind: "budget"; teamId: TeamId; amount: number; reason: string }
+  | { kind: "remove"; teamId: TeamId; playerId: PlayerId; pickId: string; source: PickSource; price: number | null }
+  | { kind: "assign"; teamId: TeamId; playerId: PlayerId; pickId: string; slot: RosterSlot; price: number | null }
+  | { kind: "void"; lotId: LotId; playerId: PlayerId }
+  | { kind: "unavailable"; playerId: PlayerId }
+  | { kind: "available"; playerId: PlayerId }
+);
+
 /** A deferred pick-clock-expiry "skip" awaiting an end-of-round catch-up turn. */
 export type DeferredPick = {
   teamId: TeamId;
@@ -144,6 +161,16 @@ export type DraftState = {
 
   /** Players marked unavailable by the commissioner (admin:markPlayerUnavailable). */
   unavailablePlayerIds: PlayerId[];
+
+  /** Every commissioner edit, oldest first. Budget entries count toward remaining budget. */
+  commishLog: CommishEdit[];
+
+  /**
+   * Set by Resume: the 10-second "back in" countdown (SPEC: timed break) runs
+   * until this time. Clocks were already pushed back by it, so it's display
+   * only — clients hold their clock readout until it passes.
+   */
+  resumeHoldUntil: number | null;
 
   /**
    * Each manager's ranked queue (FR-19), best first. Private: only that

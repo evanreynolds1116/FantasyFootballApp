@@ -11,7 +11,8 @@ import { applyPickExpired as applySnakePickExpired, applyPickMake as applySnakeP
 import { applyMakeupPickExpired, applyMakeupPickMake } from "./rules/makeup.js";
 import { applyAdminBreak, applyAdminPause, applyAdminResume } from "./rules/pauseResume.js";
 import { applyAdminAddTime, applyAdminSetClocks, applyAdminSetRevealTopN } from "./rules/clockAdmin.js";
-import { applyMarkPlayerUnavailable, applyVoidLot } from "./rules/lotAdmin.js";
+import { applyMarkPlayerAvailable, applyMarkPlayerUnavailable, applyVoidLot } from "./rules/lotAdmin.js";
+import { applyAdjustBudget, applyAssignPlayer, applyRemovePick } from "./rules/rosterAdmin.js";
 import { applyAdminUndo } from "./rules/undo.js";
 import { reject, type ReduceResult } from "./rules/result.js";
 
@@ -72,6 +73,14 @@ export function reduce(state: DraftState, action: Action, ctx: Ctx): ReduceResul
       return applyVoidLot(state, action, ctx);
     case "admin:markPlayerUnavailable":
       return applyMarkPlayerUnavailable(state, action, ctx);
+    case "admin:markPlayerAvailable":
+      return applyMarkPlayerAvailable(state, action, ctx);
+    case "admin:adjustBudget":
+      return applyAdjustBudget(state, action, ctx);
+    case "admin:removePick":
+      return applyRemovePick(state, action, ctx);
+    case "admin:assignPlayer":
+      return applyAssignPlayer(state, action, ctx);
     case "admin:undo":
       return applyAdminUndo(state, action, ctx);
     default: {

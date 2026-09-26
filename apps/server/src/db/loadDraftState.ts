@@ -54,6 +54,9 @@ export async function loadDraftState(db: Db, draftId: string): Promise<DraftStat
     bids: bidRows.map(bidFromRow),
     picks: pickRows.slice().sort((a, b) => a.pickNo - b.pickNo).map(pickFromRow),
     ...bookkeeping,
+    // Drafts saved before these fields existed.
+    commishLog: bookkeeping.commishLog ?? [],
+    resumeHoldUntil: bookkeeping.resumeHoldUntil ?? null,
     queues,
   };
 }

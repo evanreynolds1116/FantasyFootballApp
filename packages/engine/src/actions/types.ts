@@ -1,4 +1,4 @@
-import type { LotId, PlayerId, TeamId } from "../model/types.js";
+import type { LotId, PlayerId, RosterSlot, TeamId } from "../model/types.js";
 import type { ClockSetting } from "../settings/types.js";
 
 export type Action =
@@ -25,6 +25,13 @@ export type Action =
   | { type: "admin:resolveTie"; lotId: LotId; teamId: TeamId }
   | { type: "admin:voidLot"; lotId: LotId }
   | { type: "admin:markPlayerUnavailable"; playerId: PlayerId }
+  | { type: "admin:markPlayerAvailable"; playerId: PlayerId }
+  /** Adds (or, negative, removes) money from a team's budget. */
+  | { type: "admin:adjustBudget"; teamId: TeamId; amount: number; reason: string }
+  /** Takes a player off a roster and back into the pool; an auction price is refunded. */
+  | { type: "admin:removePick"; pickId: string }
+  /** Puts an available player into one of the team's open roster spots; `price` is required for an auction spot. */
+  | { type: "admin:assignPlayer"; teamId: TeamId; playerId: PlayerId; slot: RosterSlot; price?: number }
   // Clock-expiry-driven: dispatched by a phase-2 scheduler off stored endsAt
   // fields in DraftState. The engine never reads a clock itself — these are
   // explicit, parameterized intents just like any other action.

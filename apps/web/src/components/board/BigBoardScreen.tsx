@@ -18,6 +18,7 @@ import { SnakeBoardGrid } from "../snake/SnakeBoardGrid";
 import { TieRebidScreen } from "../tie/TieRebidScreen";
 import { BidStatusStrip } from "../primitives/BidStatusStrip";
 import { DraftNotFound } from "../primitives/DraftNotFound";
+import { CommishNotice } from "../primitives/CommishNotice";
 import { PausedBanner } from "../primitives/PausedBanner";
 import { nominationSlots } from "../nominate/nominationData";
 import { NominationsGrid } from "./NominationsGrid";
@@ -241,6 +242,7 @@ function BoardShell({
         </span>
       </div>
       <PausedBanner paused={paused} breakEndsAt={breakEndsAt} />
+      <CommishNotice size="board" />
       <div className="flex min-h-0 flex-grow gap-8">{children}</div>
     </div>
   );

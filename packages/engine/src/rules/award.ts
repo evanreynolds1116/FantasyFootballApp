@@ -4,6 +4,11 @@ import type { DraftState, Lot, PickSource, PlayerId, TeamId } from "../model/typ
 import type { Event } from "../events/types.js";
 import type { ReduceResult } from "./result.js";
 
+/** Next global pick number. Max + 1 rather than length + 1: the commissioner can remove a pick from the middle. */
+export function nextPickNo(state: DraftState): number {
+  return state.picks.reduce((max, p) => Math.max(max, p.pickNo), 0) + 1;
+}
+
 /** The one atomic update shared by auction awards, snake picks, makeup picks, and auto-picks. */
 function makePick(
   state: DraftState,
@@ -11,7 +16,7 @@ function makePick(
   ctx: Ctx,
 ) {
   const { id: pickId, state: withId } = allocateId(state, "pick");
-  const pickNo = withId.picks.length + 1;
+  const pickNo = nextPickNo(withId);
   const pick = {
     id: pickId,
     pickNo,

@@ -1,6 +1,7 @@
 import {
   availablePlayerIds,
   makeupOrderForRound,
+  nextPickNo,
   orderForRound,
   positionGroupCount,
   positionGroupFor,
@@ -45,7 +46,7 @@ export function SnakePickScreen() {
 
   const isMakeup = snapshot.phase === "makeup";
   const totalRounds = snapshot.settings.rosterSize - snapshot.settings.auctionSpots;
-  const pickNo = snapshot.picks.length + 1;
+  const pickNo = nextPickNo(state);
 
   // Preview only, ignores deferred pick-clock-expiry catch-up insertions —
   // those are a rare edge case (pickExpiryAction: "skip") and this is just a

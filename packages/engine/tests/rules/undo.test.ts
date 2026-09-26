@@ -5,7 +5,7 @@ import { applyNominate } from "../../src/rules/nomination.js";
 import { applyBidSubmit } from "../../src/rules/bidding.js";
 import { applyLotExpired } from "../../src/rules/reveal.js";
 import { applyAdminUndo } from "../../src/rules/undo.js";
-import { applyAdminBreak, applyAdminResume } from "../../src/rules/pauseResume.js";
+import { applyAdminBreak, applyAdminResume, BACK_IN_MS } from "../../src/rules/pauseResume.js";
 import { beginSnake, applyPickMake } from "../../src/rules/snake.js";
 import type { DraftState } from "../../src/model/types.js";
 import { remainingBudget } from "../../src/selectors/budget.js";
@@ -74,7 +74,7 @@ describe("undo", () => {
     const resumed = applyAdminResume(res.state, { type: "admin:resume" }, makeCtx(50_000)).state;
     const resumedB = resumed.lots.find((l) => l.id === lotB!.id)!;
     expect(resumedB.state).toBe("open");
-    expect(resumedB.endsAt).toBe(50_000 + (endsAt - 12_000));
+    expect(resumedB.endsAt).toBe(50_000 + BACK_IN_MS + (endsAt - 12_000));
     expect(resumed.lots.find((l) => l.id === lotA!.id)?.state).toBe("returnedToPool");
   });
 

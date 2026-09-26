@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { DraftAlerts } from "../components/alerts/DraftAlerts";
 import { BidScreen } from "../components/bid/BidScreen";
 import { NominateScreen } from "../components/nominate/NominateScreen";
+import { CommishNotice } from "../components/primitives/CommishNotice";
 import { ConnectionBadge } from "../components/primitives/ConnectionBadge";
 import { DraftNotFound } from "../components/primitives/DraftNotFound";
 import { PausedBanner } from "../components/primitives/PausedBanner";
@@ -39,6 +40,9 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
         </span>
       </div>
       {snapshot && <PausedBanner paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt} />}
+      <div className="px-4 pt-2 empty:hidden md:px-8">
+        <CommishNotice />
+      </div>
       <div className="flex flex-grow flex-col px-4 md:px-8">
         {!snapshot ? (
           <div className="flex flex-grow items-center justify-center text-muted">Loading draft…</div>

@@ -9,7 +9,7 @@ import { availablePlayerIds, isPlayerAvailable } from "../selectors/lots.js";
 import { directionForRound, orderForRound, teamsByDraftNumber } from "../selectors/order.js";
 import { remainingMinimumsReachable, wouldExceedPositionMax } from "../selectors/roster.js";
 import type { Event } from "../events/types.js";
-import { awardNonAuctionPick } from "./award.js";
+import { awardNonAuctionPick, nextPickNo } from "./award.js";
 import { beginMakeup } from "./makeup.js";
 import { ok, reject, type ReduceResult } from "./result.js";
 
@@ -20,7 +20,7 @@ export function totalSnakeRounds(state: DraftState): number {
 function emitPickTurn(state: DraftState, teamId: string, ctx: Ctx): { state: DraftState; events: Event[] } {
   const endsAt = endsAtFor(ctx.now, state.settings.pickClockSec);
   const nextState = bumpVersion({ ...state, snakePickTurnTeamId: teamId, snakePickEndsAt: endsAt, snakePickRemainingMs: null });
-  return { state: nextState, events: [{ type: "pick:turn", teamId, pickNo: state.picks.length + 1, endsAt }] };
+  return { state: nextState, events: [{ type: "pick:turn", teamId, pickNo: nextPickNo(state), endsAt }] };
 }
 
 export function beginSnake(state: DraftState, ctx: Ctx): ReduceResult {

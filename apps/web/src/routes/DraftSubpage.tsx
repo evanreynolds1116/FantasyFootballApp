@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { CommishNotice } from "../components/primitives/CommishNotice";
 import { ConnectionBadge } from "../components/primitives/ConnectionBadge";
 import { DraftNotFound } from "../components/primitives/DraftNotFound";
 import { PausedBanner } from "../components/primitives/PausedBanner";
@@ -20,6 +21,11 @@ function Shell({ draftId, children }: { draftId: string; children: ReactNode }) 
       {snapshot && (
         <div className="px-4 pt-3 empty:hidden md:px-8">
           <PausedBanner paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt} />
+        </div>
+      )}
+      {snapshot && (
+        <div className="px-4 pt-3 empty:hidden md:px-8">
+          <CommishNotice />
         </div>
       )}
       <div className="flex flex-grow flex-col px-4 md:px-8">{children}</div>

@@ -1,9 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { CommishEdit } from "@draft-app/engine";
 import type { Socket } from "socket.io-client";
 import type { DraftSnapshot, RevealedBid, RevealPayload } from "../lib/contracts";
 import { createDraftSocket, joinDraft, resync } from "../lib/socket";
 
 export type ConnectionStatus = "connecting" | "connected" | "reconnecting";
+
+/** How long a commissioner edit's notice stays up. */
+const NOTICE_DISPLAY_MS = 8_000;
 
 /** How long a reveal stays on screen before every client falls back to the live view. SPEC.md's own worked example assumes ~10s. */
 const REVEAL_DISPLAY_MS = 10_000;
@@ -16,6 +20,8 @@ type DraftContextValue = {
   reveal: RevealPayload | null;
   /** True when the server refused the join because no such draft exists (e.g. a mistyped link). */
   notFound: boolean;
+  /** The latest commissioner edit, for NOTICE_DISPLAY_MS after it happens — every screen tells the league. */
+  notice: CommishEdit | null;
 };
 
 const DraftContext = createContext<DraftContextValue | null>(null);
@@ -46,6 +52,7 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [reveal, setReveal] = useState<RevealPayload | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [notice, setNotice] = useState<CommishEdit | null>(null);
 
   useEffect(() => {
     let resyncScheduled = false;
@@ -55,6 +62,7 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     let lastConnectedTeamIds: string[] = [];
     let lastMyQueue: string[] = [];
     let revealTimeout: ReturnType<typeof setTimeout> | null = null;
+    let noticeTimeout: ReturnType<typeof setTimeout> | null = null;
     // A tie's *final* round resolves via lot:tieRebidRevealed + lot:awarded
     // — never lot:reveal, which only fires for a lot's very first (untied)
     // close. Tracking the most recent tie-round reveal lets a matching
@@ -140,6 +148,11 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
       if (eventName === "lot:reveal") {
         armReveal(payload as RawReveal);
       }
+      if (eventName === "commish:edit") {
+        if (noticeTimeout) clearTimeout(noticeTimeout);
+        setNotice((payload as { edit: CommishEdit }).edit);
+        noticeTimeout = setTimeout(() => setNotice(null), NOTICE_DISPLAY_MS);
+      }
       if (eventName === "lot:tieRebidRevealed") {
         const raw = payload as RawTieRevealed;
         lastTieReveal = { lotId: raw.lotId, bids: raw.bids };
@@ -165,11 +178,20 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
       socket.offAny(handleAny);
       socket.disconnect();
       if (revealTimeout) clearTimeout(revealTimeout);
+      if (noticeTimeout) clearTimeout(noticeTimeout);
     };
   }, [draftId, socket]);
 
-  const value = useMemo<DraftContextValue>(() => ({ snapshot, status, socket, reveal, notFound }), [snapshot, status, socket, reveal, notFound]);
+  const value = useMemo<DraftContextValue>(() => ({ snapshot, status, socket, reveal, notFound, notice }), [snapshot, status, socket, reveal, notFound, notice]);
   return <DraftContext.Provider value={value}>{children}</DraftContext.Provider>;
+}
+
+/**
+ * When the 10-second "back in" countdown after a Resume ends, or null. Safe
+ * outside a DraftProvider (returns null), so useCountdown can read it.
+ */
+export function useResumeHold(): number | null {
+  return useContext(DraftContext)?.snapshot?.resumeHoldUntil ?? null;
 }
 
 export function useDraft(): DraftContextValue {

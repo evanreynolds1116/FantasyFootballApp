@@ -15,4 +15,7 @@ export type ErrorCode =
   | "INVALID_PHASE"
   | "NOTHING_TO_UNDO"
   | "NOT_TIE_FALLBACK"
-  | "INVALID_QUEUE";
+  | "INVALID_QUEUE"
+  | "INVALID_EDIT"
+  | "ROSTER_FULL"
+  | "BID_IN_PROGRESS";

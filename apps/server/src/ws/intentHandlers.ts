@@ -36,6 +36,15 @@ const schemas = {
   "admin:resolveTie": z.object({ lotId: z.string(), teamId: z.string() }),
   "admin:voidLot": z.object({ lotId: z.string() }),
   "admin:markPlayerUnavailable": z.object({ playerId: z.string() }),
+  "admin:markPlayerAvailable": z.object({ playerId: z.string() }),
+  "admin:adjustBudget": z.object({ teamId: z.string(), amount: z.number().int(), reason: z.string().max(200) }),
+  "admin:removePick": z.object({ pickId: z.string() }),
+  "admin:assignPlayer": z.object({
+    teamId: z.string(),
+    playerId: z.string(),
+    slot: z.enum(["auction", "snake"]),
+    price: z.number().int().nonnegative().optional(),
+  }),
 } as const;
 
 const TEAM_SCOPED_EVENTS = new Set(["nominate", "bid:submit", "bid:pass", "tie:rebid", "pick:make", "queue:update"]);
@@ -51,6 +60,10 @@ const ADMIN_EVENTS = new Set([
   "admin:resolveTie",
   "admin:voidLot",
   "admin:markPlayerUnavailable",
+  "admin:markPlayerAvailable",
+  "admin:adjustBudget",
+  "admin:removePick",
+  "admin:assignPlayer",
 ]);
 
 function data(socket: Socket): SocketData {

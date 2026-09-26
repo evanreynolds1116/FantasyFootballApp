@@ -6,8 +6,13 @@ export function spentByTeam(state: DraftState, teamId: TeamId): number {
     .reduce((sum, p) => sum + (p.price as number), 0);
 }
 
+/** Net of every commissioner budget adjustment for the team. */
+export function budgetAdjustmentTotal(state: DraftState, teamId: TeamId): number {
+  return state.commishLog.reduce((sum, e) => (e.kind === "budget" && e.teamId === teamId ? sum + e.amount : sum), 0);
+}
+
 export function remainingBudget(state: DraftState, teamId: TeamId): number {
-  return state.settings.startingBudget - spentByTeam(state, teamId);
+  return state.settings.startingBudget + budgetAdjustmentTotal(state, teamId) - spentByTeam(state, teamId);
 }
 
 /** No forced reserve rule: max bid is simply whatever budget remains. */

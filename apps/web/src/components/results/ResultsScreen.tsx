@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { CommishLogList } from "../commish/CommishLogPanel";
 import { useDraft } from "../../store/DraftProvider";
 import { TeamDetail, TeamsTable } from "../rosters/RostersScreen";
 import { teamSummaries } from "../rosters/rosterData";
@@ -58,7 +59,8 @@ export function ResultsScreen({ variant = "page" }: { variant?: "page" | "board"
   if (!snapshot) return null;
   const rows = teamSummaries(snapshot);
   const selected = rows.find((r) => r.id === chosenId) ?? rows.find((r) => r.isMe) ?? rows[0];
-  const totalSpent = rows.reduce((sum, r) => sum + (snapshot.settings.startingBudget - r.moneyLeft), 0);
+  // From prices, not budget left: commissioner budget adjustments aren't spending.
+  const totalSpent = snapshot.picks.reduce((sum, p) => sum + (p.price ?? 0), 0);
   const board = variant === "board";
 
   return (
@@ -117,6 +119,15 @@ export function ResultsScreen({ variant = "page" }: { variant?: "page" | "board"
             <LogRow key={e.pickNo} e={e} />
           ))}
         </ol>
+      )}
+
+      {tab === "log" && snapshot.commishLog.length > 0 && (
+        <section aria-labelledby="commish-changes" className="flex flex-col gap-2 rounded-panel border border-line bg-surface p-4">
+          <h2 id="commish-changes" className="label">
+            Commissioner changes
+          </h2>
+          <CommishLogList snapshot={snapshot} newestFirst={false} />
+        </section>
       )}
       <p className="text-[13px] text-muted">
         Bids that were never revealed stay secret, even now. Only the amounts shown at each reveal appear here.

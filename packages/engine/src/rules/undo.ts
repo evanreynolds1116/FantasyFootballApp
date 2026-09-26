@@ -13,7 +13,9 @@ function findLotForAuctionPick(state: DraftState, pick: Pick): Lot | undefined {
 }
 
 function deriveLastAwardOrPick(state: DraftState, picks: Pick[]): DraftState["lastAwardOrPick"] {
-  const last = picks[picks.length - 1];
+  // Commissioner-added players aren't draft results, so undo never targets them.
+  const assigned = new Set(state.commishLog.flatMap((e) => (e.kind === "assign" ? [e.pickId] : [])));
+  const last = [...picks].reverse().find((p) => !assigned.has(p.id));
   if (!last) return null;
   if (last.source === "auction") {
     const lot = findLotForAuctionPick({ ...state, picks }, last);

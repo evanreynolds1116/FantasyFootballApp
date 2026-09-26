@@ -3,8 +3,11 @@ import { useCountdown } from "../../lib/useCountdown";
 import { useDraft } from "../../store/DraftProvider";
 import { asEngineState } from "../../store/selectors";
 import { ClockLengthsPanel } from "./ClockLengthsPanel";
+import { CommishLogPanel } from "./CommishLogPanel";
 import { ConnectedTeamsPanel } from "./ConnectedTeamsPanel";
+import { LotAndPlayersPanel } from "./LotAndPlayersPanel";
 import { ResolveTiePanel } from "./ResolveTiePanel";
+import { RosterEditPanel } from "./RosterEditPanel";
 import { UndoButton } from "./UndoButton";
 import { activeClock, phaseSummary } from "./consoleText";
 import { useAdminIntent } from "./useAdminIntent";
@@ -153,7 +156,13 @@ export function CommissionerConsole() {
 
       {snapshot.phase !== "setup" && <UndoButton snapshot={snapshot} disabled={offline} />}
 
+      {snapshot.phase !== "setup" && <LotAndPlayersPanel snapshot={snapshot} disabled={offline} />}
+
+      {snapshot.phase !== "setup" && <RosterEditPanel snapshot={snapshot} disabled={offline} />}
+
       <ConnectedTeamsPanel snapshot={snapshot} />
+
+      {snapshot.phase !== "setup" && <CommishLogPanel snapshot={snapshot} />}
     </div>
   );
 }
