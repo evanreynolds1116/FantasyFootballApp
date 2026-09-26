@@ -133,7 +133,7 @@ Final rosters, spend per team and a full pick/bid log, exportable as CSV, a shar
 | FR-17 | Audit log of every nomination, bid (amount + server timestamp), reveal, tie round, pick and commissioner action | Must |
 | FR-18 | Export results as CSV; shareable read-only results page | Should |
 | FR-19 | One ranked queue per manager, built in the lobby or during the draft and private to them; auto-nominate and auto-pick use its top available player first (auto-pick: the first who fits the roster) | Should |
-| FR-20 | Sounds/vibration for "you're on the clock", 10-second warning, reveal | Should |
+| FR-20 | Sounds/vibration for "you're on the clock" (your nomination, tie re-bid or pick), a 10-second warning while you still haven't acted (bids included), and every reveal (a distinct one if you won); each manager can turn sound and vibration off on their device | Should |
 | FR-21 | Big-board spectator mode for a TV | Must |
 | FR-22 | Configurable position groups with min/max (your league: QB 2, RB 4–5, WR/TE 6–7, K 2, DEF 2), enforced on bids, picks and auto-picks; a team can't take a player that leaves its remaining minimums unfillable | Must |
 | FR-23 | Player projections/ADP shown on the player card | Could |

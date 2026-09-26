@@ -7,8 +7,8 @@ secrecy, make-up turn order, a server crash, persistence latency), added a
 Pass option to auction bidding, wrote the README, made a screenshot walkthrough
 for the league, ran a manual test (user as commissioner + 11 bots), and added a
 live "nominated this round" list to the nominate screen and big board.
-Then (same day) built the watchlist/queue (FR-19); sounds and vibration
-(FR-20) are next.
+Then (same day) built the watchlist/queue (FR-19) and sounds and vibration
+(FR-20).
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -31,7 +31,7 @@ works through the UI alone, and two full-length 12-team scripted mock drafts
 (see "Mock draft runs" below) have finished clean. SPEC's phase-3 "done when" —
 friends complete a mock draft on phones — hasn't happened yet. Committed
 through `468cf86` (nominations list), then README screenshots and the
-watchlist/queue (see below). [README.md](README.md) walks through every screen, the rules, the
+watchlist/queue and sounds/vibration (see below). [README.md](README.md) walks through every screen, the rules, the
 architecture, the stack, setup and the API.
 
 ## What's actually built and working in apps/web
@@ -135,6 +135,18 @@ architecture, the stack, setup and the API.
   auto-pick the first queued player who fits the roster, each falling back
   to the old best-available rule. Verified live in headless Chrome
   (lobby queue → auto-nominate → snake auto-pick), no page errors.
+- **Sounds and vibration** (FR-20, `components/alerts/`) — a bell in the
+  draft header opens Sounds / Vibration switches (localStorage, per device;
+  vibration hidden where unsupported, e.g. iPhone) and a Test button. Cues,
+  synthesized with Web Audio (no sound files): chime + buzz when it becomes
+  your nomination, tie re-bid or pick turn; ticks at 10 s left if you still
+  haven't acted (bids included, once per turn); a bell on each reveal, an
+  arpeggio if you won. `myTurn(snapshot)` is the pure, unit-tested helper
+  that decides whose turn it is. Sound needs one tap on the page first
+  (browser rule). The big board is silent. On narrow phones the header's
+  "Connected" shrinks to its dot so the bell fits. Verified live: the cue
+  sequence turn → warning → bid warning → won → reveal → snake turn came
+  out exactly, no page errors.
 - A draft link with a bad/unknown id shows "Draft not found" instead of
   loading forever (`primitives/DraftNotFound.tsx`).
 - `routes/DraftSubpage.tsx` is the shared frame (back link, connection badge,
@@ -319,7 +331,7 @@ Walkthrough, manual test and nominations session (2026-09-26):
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
   data, CSV parsing, rules summary, start checks, results log/CSV,
-  nomination slots / unavailable reasons — 39 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
+  nomination slots / unavailable reasons, whose turn it is — 45 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
 - **Bid acks under a rush still exceed SPEC's 300 ms** for the last of 12
   simultaneous bidders (~0.7 s) because actions are persisted one at a time
   per draft and each save is ~2 round trips to the remote dev DB. A database
@@ -351,10 +363,8 @@ In rough priority order:
 3. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
    Decide whether the dev login is acceptable for it (anyone who types
    someone's email can sign in as them) or magic links come first.
-4. **Sounds and vibration** (FR-20) — in progress next: "you're on the
-   clock", 10-second warning, reveal.
-5. The console gaps listed above.
-6. Real auth, a server CSV export route, settings-editing
+4. The console gaps listed above.
+5. Real auth, a server CSV export route, settings-editing
    after creation — all previously deferred to phase 3/4, still deferred.
 
 ## Mock draft runs
@@ -379,7 +389,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the queue commit. Note `pnpm run typecheck`
+  packages as of the sounds/vibration commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with

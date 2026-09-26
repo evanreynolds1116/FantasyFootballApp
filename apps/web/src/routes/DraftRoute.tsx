@@ -1,5 +1,6 @@
 import { currentLot } from "@draft-app/engine";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { DraftAlerts } from "../components/alerts/DraftAlerts";
 import { BidScreen } from "../components/bid/BidScreen";
 import { NominateScreen } from "../components/nominate/NominateScreen";
 import { ConnectionBadge } from "../components/primitives/ConnectionBadge";
@@ -21,10 +22,10 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-        <Link to="/" className="font-display text-lg font-bold uppercase">
+        <Link to="/" className="whitespace-nowrap font-display text-lg font-bold uppercase">
           Draft Day
         </Link>
-        <span className="flex items-center gap-4">
+        <span className="flex items-center gap-3 sm:gap-4">
           <Link to={`/draft/${draftId}/rosters`} className="text-sm font-semibold text-muted hover:text-text">
             Rosters
           </Link>
@@ -33,6 +34,7 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
               Commissioner
             </Link>
           )}
+          <DraftAlerts />
           <ConnectionBadge status={status} />
         </span>
       </div>

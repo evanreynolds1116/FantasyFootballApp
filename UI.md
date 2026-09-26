@@ -115,7 +115,8 @@ The same screens and rules on every device; only the layout changes.
 - **Paused / break:** a banner "Draft paused" or a break countdown; all inputs disabled; clocks frozen.
 - **Reconnecting:** a small banner "Reconnecting…"; inputs disabled until the snapshot arrives.
 - **Not your turn / not eligible:** controls disabled with the reason in words.
-- **Last 10 seconds:** clock turns warn color; optional sound/vibration (FR-20).
+- **Last 10 seconds:** clock turns warn color; a warning sound/vibration if you still have to act (FR-20).
+- **Alerts (FR-20):** a bell in the draft header opens Sounds and Vibration switches (remembered per device; vibration hidden where unsupported, e.g. iPhone) and a Test button. Cues: rising chime when it becomes your turn to nominate, re-bid or pick; three ticks at 10 seconds left; a bell on each reveal, an arpeggio if you won. Browsers need one tap on the page before sound can play. On narrow phones the header's "Connected" shrinks to its green dot.
 
 ## Accessibility
 - Real `<button>`, `<input>` and `<label>` elements; icon-only buttons have `aria-label`.
