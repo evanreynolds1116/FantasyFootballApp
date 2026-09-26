@@ -4,7 +4,9 @@ Last updated 2026-09-26, after the session that built the Commissioner console,
 Rosters & budgets, League setup and the Lobby, then ran full-length scripted
 mock drafts and fixed what they found (make-up screen, results screen, bid
 secrecy, make-up turn order, a server crash, persistence latency), added a
-Pass option to auction bidding, and wrote the README.
+Pass option to auction bidding, wrote the README, made a screenshot walkthrough
+for the league, ran a manual test (user as commissioner + 11 bots), and added a
+live "nominated this round" list to the nominate screen and big board.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -26,8 +28,7 @@ verified in headless Chrome against a live server, including the pre-draft flow
 works through the UI alone, and two full-length 12-team scripted mock drafts
 (see "Mock draft runs" below) have finished clean. SPEC's phase-3 "done when" —
 friends complete a mock draft on phones — hasn't happened yet. Committed
-(`597aa7a`, `49b5083`, `dcc84c4`, `b09770d`, `cdcbc16`, plus the Pass + README
-commit). [README.md](README.md) walks through every screen, the rules, the
+through `468cf86` (nominations list), plus this PROGRESS update. [README.md](README.md) walks through every screen, the rules, the
 architecture, the stack, setup and the API.
 
 ## What's actually built and working in apps/web
@@ -58,16 +59,24 @@ architecture, the stack, setup and the API.
   `/dev/session` route; the big board (`/board/:draftId`) auto-mints a
   throwaway spectator session so it needs no login of its own.
 - **Bid** — phone and laptop layouts (`components/bid/`), fully wired: sealed
-  bid submit/change, client-side min/budget hints, server error codes as the
-  final word, "N of M have bid" strip, laptop's round-lots/roster/all-teams
-  panels.
+  bid submit/change and Pass, client-side min/budget hints, server error
+  codes as the final word, "N of M are in" strip, laptop's
+  round-lots/roster/all-teams panels. On laptops the Lock in bid / Pass
+  buttons sit on their own row under the amount field (the middle column is
+  only ~400px wide at 1280px).
 - **Big board** (`components/board/BigBoardScreen.tsx`) — live-lot hero,
-  bid-status strip, round-lots grid, teams overview. Also flips to the
-  nomination-in-progress, tie-rebid, reveal, and snake-board views as
+  bid-status strip, round-lots grid, teams overview. During nominations it
+  shows `NominationsGrid` (a tile per team in nomination order: the player
+  each put up, the team on the clock with its countdown, teams still to
+  come). Also flips to the tie-rebid, reveal, and snake-board views as
   appropriate (see below) — reuses the same components the team-facing
   screens use rather than a separate board-specific implementation.
-- **Nominate** (`components/nominate/`) — search, position pills, "this round
-  so far", correct snake-direction label.
+- **Nominate** (`components/nominate/`) — a live "Nominated this round" list
+  right under the banner (player, position, nominating team, who's
+  nominating now, who's next; `nominationData.ts`), search, position pills,
+  snake-direction label. Searching for a player who can't be nominated shows
+  him greyed with the reason (already nominated this round, already drafted,
+  marked unavailable) instead of "no players match".
 - **Reveal** (`components/reveal/RevealScreen.tsx`) — the one screen that
   isn't snapshot-driven. The engine resolves a lot's
   `open → closed → revealed → awarded` atomically inside one `reduce()` call,
@@ -238,6 +247,32 @@ Pass session (user's feature request, 2026-09-26):
 - The mock-draft bots still "pass" by not bidding; switch them to `bid:pass`
   next time the script is run, to see the early-close speed-up.
 
+Walkthrough, manual test and nominations session (2026-09-26):
+- **League walkthrough doc** for the user to share with the league: every
+  step of a demo draft with 25 screenshots and nine questions for feedback
+  (clocks, reveal count, pass, ties, no-bid rule, snake expiry, devices,
+  confusing screens, practice date):
+  https://claude.ai/code/artifact/8b1c6860-0b43-4111-996e-b2f45b50a172
+  The league's comments there should feed the next settings/rules decisions.
+- **Fixes the screenshots turned up** (`72b84e9`): the laptop bid field pushed
+  Lock in bid / Pass out of view at 1280px; the tie banner used a spacing
+  class Tailwind doesn't have (`px-4.5`) and had no padding.
+- **Manual test:** the user ran the app as commissioner (own team) with 11
+  bot managers. The bot script (`bots.mjs`, session scratchpad, not in the
+  repo) waits for a new league, claims every open slot except one for the
+  commissioner, then plays every bot team (1–5 s delays, passes, tie
+  re-bids, snake + make-up picks). `LEAGUE_ID=<id>` reattaches it to an
+  existing league. First run had a bug (it forgot its teams right after
+  claiming them); fixed and reattached mid-draft. The user stopped partway;
+  their **TEST LEAGUE** (draft `68427fef-502d-4719-9108-a698e03b2441`) is
+  kept in the dev DB on purpose — don't delete it without asking.
+- **Nominations list** (`468cf86`, user's feature request): the nominate
+  screen and big board changes above. Display only, no rule change; UI.md
+  updated.
+- `bid-secrecy.test.ts`'s pass test now scopes its bid lookup to its own
+  draft — lot ids ("lot_N") repeat across drafts, so it had started counting
+  TEST LEAGUE's passes.
+
 ## Known, intentional gaps (not bugs — flagged as they came up)
 
 - **Pre-draft gaps:** no team avatars (optional in FR-02), no "mock round"
@@ -263,8 +298,8 @@ Pass session (user's feature request, 2026-09-26):
   bidder, so "Your bid is in" shows `•••` instead of a remembered number after
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
-  data, CSV parsing, rules summary, start checks, results log/CSV) are
-  unit-tested; screens are verified by hand. No Playwright suite yet.
+  data, CSV parsing, rules summary, start checks, results log/CSV,
+  nomination slots / unavailable reasons — 39 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
 - **Bid acks under a rush still exceed SPEC's 300 ms** for the last of 12
   simultaneous bidders (~0.7 s) because actions are persisted one at a time
   per draft and each save is ~2 round trips to the remote dev DB. A database
@@ -286,10 +321,17 @@ Pass session (user's feature request, 2026-09-26):
 ## What's left
 
 In rough priority order:
-1. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
-   The scripted runs are clean; this needs the app reachable from phones
-   (hosting, or the dev server on the LAN).
-2. The console gaps listed above.
+1. **League feedback** from the walkthrough doc — may change settings or
+   rules before anything else is built.
+2. **Hosting**, so phones can reach the app: pick a host (SPEC suggests
+   Render / Railway / Fly.io, < ~$20/month) with the database in the same
+   region (should also fix the bid-ack rush latency), production build,
+   HTTPS, migrations on deploy, PWA manifest. Needs the user's choice of
+   host and whether they have a domain.
+3. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
+   Decide whether the dev login is acceptable for it (anyone who types
+   someone's email can sign in as them) or magic links come first.
+4. The console gaps listed above.
 3. Real auth, watchlist/queue, a server CSV export route, settings-editing
    after creation — all previously deferred to phase 3/4, still deferred.
 
@@ -315,13 +357,17 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the Pass + README commit. Note `pnpm run typecheck`
+  packages as of `468cf86`. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with
   `channel: "chrome"` works (install it in a scratch dir, not the repo).
 - Demo drafts can now be set up through the UI (or POST /leagues + POST
   /invites/:code/claim) — no more direct `update team set user_id` needed.
+- The session scratchpad holds `mock_draft.mjs` (full scripted run),
+  `bots.mjs` (manual test bots), `walkthrough.mjs` (demo draft +
+  screenshots) — none are in the repo; check the useful ones in before
+  relying on them.
 - The Supabase dev DB from this session still has several leftover test
   leagues/drafts in it (named things like "Snake Demo League", "Nominate Demo
   League") — harmless, but worth a scoped cleanup pass (by league name, never
