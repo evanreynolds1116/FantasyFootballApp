@@ -472,17 +472,18 @@ Walkthrough, manual test and nominations session (2026-09-26):
 
 ## What's left
 
+League feedback on the walkthrough came back (2026-09-26): good, no notes —
+no rule or settings changes needed.
+
 In rough priority order:
-1. **League feedback** from the walkthrough doc — may change settings or
-   rules before anything else is built.
-2. **Hosting**, so phones can reach the app: pick a host (SPEC suggests
+1. **Hosting**, so phones can reach the app: pick a host (SPEC suggests
    Render / Railway / Fly.io, < ~$20/month) with the database in the same
    region (should also fix the bid-ack rush latency), production build,
    HTTPS, migrations on deploy, PWA manifest, and a mail provider for
    sign-in emails (DEV_LOGIN must stay off there). Needs the user's choice
    of host and whether they have a domain.
-3. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
-4. MFL import/export (phase 4), and the smaller gaps listed above.
+2. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
+3. MFL import/export (phase 4), and the smaller gaps listed above.
 
 ## Mock draft runs
 
