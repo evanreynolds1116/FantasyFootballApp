@@ -19,6 +19,8 @@ import { TieRebidScreen } from "../tie/TieRebidScreen";
 import { BidStatusStrip } from "../primitives/BidStatusStrip";
 import { DraftNotFound } from "../primitives/DraftNotFound";
 import { PausedBanner } from "../primitives/PausedBanner";
+import { nominationSlots } from "../nominate/nominationData";
+import { NominationsGrid } from "./NominationsGrid";
 import { RoundLotsGrid } from "./RoundLotsGrid";
 import { TeamsOverviewBoard, type BoardTeamRow } from "./TeamsOverviewBoard";
 
@@ -111,11 +113,13 @@ export function BigBoardScreen() {
   }
 
   if (snapshot.nominationTurnTeamId !== null) {
-    const nominator = snapshot.teams.find((t) => t.id === snapshot.nominationTurnTeamId);
+    const order = nominationOrderForRound(snapshot.settings, teamsByDraftNumber(snapshot.teams), snapshot.auctionRound);
+    const byId = new Map(snapshot.teams.map((t) => [t.id, t]));
+    const directionLabel = order.length > 1 ? `${byId.get(order[0]!)?.draftNumber} → ${byId.get(order[order.length - 1]!)?.draftNumber}` : null;
     return (
       <BoardShell phase={snapshot.phase} round={snapshot.auctionRound} lotIndex={null} lotsCount={null} paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt}>
-        <div className="flex flex-grow items-center justify-center text-3xl text-muted">
-          Team {nominator?.draftNumber ?? "?"} is nominating…
+        <div className="flex min-w-0 flex-grow flex-col gap-5">
+          <NominationsGrid round={snapshot.auctionRound} slots={nominationSlots(state)} directionLabel={directionLabel} endsAt={snapshot.nominationEndsAt} paused={snapshot.paused} />
         </div>
         <TeamsOverviewBoard rows={teamRows} />
       </BoardShell>

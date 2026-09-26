@@ -47,7 +47,8 @@ The same screens and rules on every device; only the layout changes.
 - Amber "You're on the clock" banner with the nomination clock.
 - Player search field plus position filter pills: All, QB, RB, WR/TE, K, DEF.
 - Available players list: position, name, NFL team, bye week, amber Nominate button.
-- "This round so far" panel listing lots nominated this round and by whom, with the round's direction (1 → 12 or 12 → 1).
+- "Nominated this round" list right under the banner (so the team on the clock sees it before searching): each player put up so far and by whom, who is nominating now and who's still to come, with the round's direction (1 → 12 or 12 → 1).
+- Searching for a player who can't be nominated shows them greyed with the reason ("Already nominated this round — Lot 3, by Team 4", "Already drafted by Team 2 ($96)") instead of just "no players match".
 - Everyone not nominating sees the same header with "Team N is nominating…" instead of the banner.
 
 ### 2. Bid — phone (`Main.dc.html`, working prototype)
@@ -104,6 +105,7 @@ The same screens and rules on every device; only the layout changes.
 - "N of M are in" strip with one tile per team, same meaning as the phone strip; ineligible teams show "out".
 - Round lots grid (6 per row): every lot in this round — sold (dimmed, winner and price), bidding now (amber), up next (amber outline), upcoming (player, position, nominator). Note any team that skipped nominating (full or broke) and the next round's direction.
 - Right column: every team's money left and auction spots filled; broke teams in warn color with "broke".
+- During nominations: a tile per team nominating this round, in order — the player each has put up, the team on the clock with its clock, and the teams still to come.
 - During reveals it shows the reveal card; during a break, a full-screen break countdown; in the snake phase, the snake board with the team on the clock.
 
 ## States every screen must handle

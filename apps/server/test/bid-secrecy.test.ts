@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildServer } from "../src/buildServer.js";
 import { bid, player } from "../src/db/schema.js";
@@ -240,7 +240,8 @@ describe("bid secrecy (network level)", () => {
       expect(lotBids).toHaveLength(3);
       for (const b of lotBids) expect(b).not.toHaveProperty("pass");
 
-      const stored = await app.db.select({ pass: bid.pass }).from(bid).where(eq(bid.lotId, lotId));
+      // Lot ids are only unique within a draft, so scope to this one (other drafts in the dev DB reuse "lot_N").
+      const stored = await app.db.select({ pass: bid.pass }).from(bid).where(and(eq(bid.draftId, draftId), eq(bid.lotId, lotId)));
       expect(stored.filter((r) => r.pass)).toHaveLength(2);
     } finally {
       sockets.forEach((s) => s.disconnect());
