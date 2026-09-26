@@ -83,7 +83,7 @@ export function TieRebidScreen({ lot }: { lot: Lot }) {
         <span>Tie-break round {lot.tieRound}</span>
       </div>
 
-      <div className="flex items-center justify-between rounded-panel border-2 border-warn-border bg-warn-bg px-4.5 py-4.5">
+      <div className="flex items-center justify-between rounded-panel border-2 border-warn-border bg-warn-bg px-[18px] py-[18px]">
         <div className="flex flex-col gap-1">
           <span className="text-[13px] font-bold uppercase tracking-[0.08em] text-warn">You&apos;re still tied</span>
           <span className="text-[17px] font-semibold">With {tiedWithLabel || "another team"} at ${myPrevious}</span>
