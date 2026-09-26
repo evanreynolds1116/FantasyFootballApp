@@ -164,6 +164,11 @@ architecture, the stack, setup and the API.
   - `tests/rules/revealHold.test.ts` (4) and `revealTimeline.test.ts` (7);
     one tie/pause test moved past the reveal. Verified live on a phone:
     stage screenshots, vibration order, next clock at a full 60 s.
+- **TV-sized reveal**: `RevealScreen` now has a shared `useRevealView` model
+  (timeline, flipped bids, count-up, details, sounds) with a phone layout and
+  a `size="board"` TV layout at the big board's scale (96px player, 168px
+  price, flipped bids and next-up in a right column, bigger confetti, plus
+  the pause banner and commissioner notices). Checked live at 1600×900.
 - **README refresh**: text brought up to date (queue, alerts, reveal show,
   console edits, sign-in, API/data model) and every screenshot re-shot from
   a new demo draft (`walkthrough2.mjs` in the scratchpad: signs in with real
@@ -404,8 +409,6 @@ Walkthrough, manual test and nominations session (2026-09-26):
 - **Pre-draft gaps:** no team avatars (optional in FR-02), no "mock round"
   (SPEC Flow 1 step 5), players can be added/removed but not edited, and the
   live MFL player import is still phase 4 (CSV of an MFL export works).
-- **The big board's reveal uses the phone layout**, centered on the TV — readable
-  but small; a TV-sized version of the show would suit the room better.
 - **Sign-in emails aren't really sent yet** — they're printed to the server
   console until `RESEND_API_KEY`/`MAIL_FROM` are set (do it with hosting;
   Resend needs a domain you own to email anyone but yourself).

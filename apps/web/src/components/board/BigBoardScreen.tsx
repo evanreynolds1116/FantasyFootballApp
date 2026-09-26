@@ -30,13 +30,7 @@ export function BigBoardScreen() {
   if (notFound) return <DraftNotFound />;
   if (!snapshot) return <div className="flex h-full items-center justify-center text-muted">Loading…</div>;
 
-  if (reveal) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-bg px-12 py-8">
-        <RevealScreen reveal={reveal} />
-      </div>
-    );
-  }
+  if (reveal) return <RevealScreen reveal={reveal} size="board" />;
 
   if (snapshot.phase === "snake" || snapshot.phase === "makeup") {
     const isMakeup = snapshot.phase === "makeup";

@@ -75,7 +75,7 @@ The same screens and rules on every device; only the layout changes.
   3. "And the winner is…" pulses for a beat.
   4. The winner's amber card slams down, the price counting up from the best runner-up, then "won by $N"; confetti. On the winner's own screen a full-screen "You won!" flash and a long buzz. A tie instead slams "It's a tie!" with the tied teams and amounts.
   5. Cards that stay hidden turn into padlocks ("N bids stay sealed · N passed"); the budget/spots tiles and "Up next · clock starts in" appear.
-- Motion is skipped for anyone who prefers reduced motion (the stages still play); the result is announced to screen readers when the top card flips. The big board plays the same show without sound.
+- Motion is skipped for anyone who prefers reduced motion (the stages still play); the result is announced to screen readers when the top card flips. The big board plays the same show without sound, in its own TV layout: the player (96px) and the big moment on the left — sealed cards, "And the winner is…", the winner card with a 168px price, or "It's a tie!" — and the flipped bids, budget/spots and "Up next · clock starts in" on the right.
 - Amber winner card: team number and name, price in large display type.
 - Runner-up rows as allowed by the reveal setting (default 2), then "N other bids stay hidden" and "N teams passed" (a count, never who).
 - Tiles showing the winner's budget before → after and auction spots now filled.
@@ -119,7 +119,7 @@ The same screens and rules on every device; only the layout changes.
 - Round lots grid (6 per row): every lot in this round — sold (dimmed, winner and price), bidding now (amber), up next (amber outline), upcoming (player, position, nominator). Note any team that skipped nominating (full or broke) and the next round's direction.
 - Right column: every team's money left and auction spots filled; broke teams in warn color with "broke".
 - During nominations: a tile per team nominating this round, in order — the player each has put up, the team on the clock with its clock, and the teams still to come.
-- During reveals it shows the reveal card; during a break, a full-screen break countdown; in the snake phase, the snake board with the team on the clock.
+- During reveals it plays the reveal show in its TV layout (see §3); during a break, a full-screen break countdown; in the snake phase, the snake board with the team on the clock.
 
 ## States every screen must handle
 - **Paused / break:** a banner "Draft paused" or a break countdown; all inputs disabled; clocks frozen. After Resume, an amber "Back in… 10" banner while every clock holds.
