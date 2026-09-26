@@ -12,6 +12,8 @@ const playerInput = z.object({
   nflTeam: z.string().trim().max(10).optional(),
   mflId: z.string().trim().max(20).optional(),
   byeWeek: z.number().int().min(1).max(18).optional(),
+  /** Only https links: they're shown as images on every screen. */
+  photoUrl: z.string().trim().max(500).url().startsWith("https://").optional(),
   status: z.string().optional(),
   custom: z.boolean().optional(),
 });
@@ -34,7 +36,7 @@ export async function registerPlayerRoutes(app: FastifyInstance): Promise<void> 
     if (!(await leagueExists(db, leagueId))) return reply.code(404).send({ error: "NOT_FOUND" });
     if (!(await isLeagueMember(db, request.userId!, leagueId))) return reply.code(403).send({ error: "FORBIDDEN" });
     const rows = await db
-      .select({ id: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam, byeWeek: player.byeWeek, mflId: player.mflId, custom: player.custom })
+      .select({ id: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam, byeWeek: player.byeWeek, mflId: player.mflId, photoUrl: player.photoUrl, custom: player.custom })
       .from(player)
       .where(eq(player.leagueId, leagueId));
     rows.sort((a, b) => a.position.localeCompare(b.position) || a.name.localeCompare(b.name));

@@ -32,7 +32,7 @@ The draft runs in two phases. Every number below is a league setting; the defaul
 1. **Nominations.** Teams nominate one available player each, in draft order. Nomination order *snakes* across rounds (1 → 12, then 12 → 1, …). A team that has filled its 8 auction spots, or is **broke** (can't afford the $5 minimum bid), is skipped.
 2. **Bidding, one lot at a time.** Once a round's nominations are in, each nominated player ("lot") is bid on in nomination order. Every eligible team may submit **one sealed bid** — at least the minimum, within its remaining budget, not past a position limit — and can change it until the clock ends. Or it can **Pass**: that locks the team in without bidding (so the lot can close sooner), can be changed to a bid until the clock ends, and looks exactly like a bid to everyone else.
 3. **Early close.** When every eligible team has bid or passed, there's a 3-second "last call" and bidding closes.
-4. **Reveal.** Every screen plays the same short reveal at the same moment — sealed cards and a drumroll, runner-up bids flipping lowest first, then the winner — showing the winner plus as many runner-up bids as the league's reveal setting allows (default: top 3). Other bids stay hidden forever; passes are shown only as a count ("2 teams passed"), never who. The reveal takes 10 seconds, and the next lot's clock doesn't start until it's over.
+4. **Reveal.** Every screen plays the same short reveal at the same moment — sealed cards and a drumroll, runner-up bids flipping lowest first, then the winner — showing the winner plus as many runner-up bids as the league's reveal setting allows (default: top 3). Other bids stay hidden forever; passes are shown only as a count ("2 teams passed"), never who. The reveal takes about 18 seconds (it ends with a 10-second "Up next" countdown), and the next lot's clock doesn't start until it's over.
 5. **Ties.** Only the teams tied for the top bid re-bid, each raising its own bid by at least the tie raise ($5). Every re-bid amount is revealed after each round; teams still tied continue until one wins. A tied team that can't raise (all-in) keeps its bid; if every tied team is all-in, the tie fallback decides (default: random draw, done by the server and logged). If a tied team doesn't re-bid in time, its previous bid stands.
 6. **No bids.** If nobody bids (everyone passed or let the clock run), the nominator gets the player at the minimum — or the player goes back in the pool if the nominator is full or at a position max (or if the league chose "always return to pool").
 7. The auction repeats round after round until every team has filled its auction spots or is broke.
@@ -90,7 +90,7 @@ The league's waiting room, refreshed every few seconds for everyone:
 
 - **Invite link** (`/join/CODE`) with a copy button; the commissioner can replace it (the old one stops working).
 - **Teams & draft order** — who has claimed which slot. Managers rename their own team. The commissioner can move teams up/down, **shuffle** the order (done on the server so it can't be rigged), rename any team, or remove a manager from a slot.
-- **Player pool** — upload a **CSV** (a MyFantasyLeague player export saved as CSV works: "Last, First" names and PK/Def positions are converted), preview it before adding, add single players, browse and remove. The pool must have at least *teams × roster size* players before the draft can start.
+- **Player pool** — upload a **CSV** (a MyFantasyLeague player export saved as CSV works: "Last, First" names and PK/Def positions are converted; an optional **Photo** column of `https://` image links adds headshots), preview it before adding, add single players, browse and remove. The pool must have at least *teams × roster size* players before the draft can start.
 - **My queue** — every manager can search the pool and rank the players they want before the draft (private to them; it carries into the draft).
 - **Rules** summary, with an Edit settings link for the commissioner. Once the draft has started the rules are locked, but the league can still be renamed.
 - **Start the draft** (commissioner). If some teams have no manager, it says exactly what will happen to them (auto-nominated / auto-picked when their clocks run out — or that a clock set to off would stall the draft). Starting locks settings, teams, order and pool.
@@ -128,13 +128,13 @@ The laptop layout adds this round's lots on the left and every team's max bid / 
 
 <img src="docs/screenshots/bid-laptop.png" alt="Bid on a laptop" width="800">
 
-**Reveal.** When bidding closes, every screen plays the same ~8-second show:
+**Reveal.** When bidding closes, every screen plays the same show (timings with the default top-3 reveal):
 
-1. **Bidding closed** — one face-down card per team that bid or passed (they look the same), shaking to a drumroll that speeds up.
-2. The runner-up bids the reveal setting allows flip one at a time, **lowest first**, each with a thud.
-3. **"And the winner is…"**
-4. The winner's card slams down with the price counting up, then "won by $15" and confetti. On the winner's own phone: a full-screen **"You won!"** and a long buzz.
-5. Bids that stay hidden turn into padlocks ("1 bid stays sealed · 2 passed"), and the winner's budget before → after and "Up next · clock starts in" appear.
+1. **Bidding closed** — one face-down card per team that bid or passed (they look the same), shaking to a drumroll that speeds up (0–2.4 s).
+2. The runner-up bids the reveal setting allows flip one at a time, **lowest first**, each with a thud — 3rd at 2.4 s, 2nd at 3.9 s.
+3. **"And the winner is…"** (5.4 s)
+4. At 6.4 s the winner's card slams down with the price counting up, then "won by $15" and confetti. On the winner's own phone: a full-screen **"You won!"** and a long buzz.
+5. Bids that stay hidden turn into padlocks ("1 bid stays sealed · 2 passed"), and the winner's budget before → after and "Up next · clock starts in" appear at 7.8 s, followed by a full 10-second "Up next" countdown; the next lot's clock starts at 17.8 s. The winner stays up for the whole 11.4 s. With fewer bids shown the show is shorter (winner only: 14.8 s), with more it's longer (all bids: 19.8 s) — the countdown is always 10 s.
 
 The next lot's clock waits until the reveal is over, so nobody loses bidding time watching it. Sounds and vibration follow each person's settings; the big board plays the same show silently.
 
@@ -171,7 +171,7 @@ Every screen handles **paused / on break** (banner, inputs locked, clocks frozen
 
 ### 6. Rosters & budgets (`/draft/:id/rosters`)
 
-Every team's money left, max bid, auction spots left, roster count and a **broke** flag, plus any team's roster by position group with counts against limits and how each player was acquired ("$96", "Snake R3", "Make-up R1", "Auto-pick R4").
+Every team's money left, max bid, auction spots left, roster count and a **broke** flag, plus any team's roster by position group with counts against limits, each player's NFL team and bye week, and how each player was acquired ("$96", "Snake R3", "Make-up R1", "Auto-pick R4").
 
 <img src="docs/screenshots/rosters.png" alt="Rosters & budgets" width="800">
 
@@ -276,7 +276,7 @@ Every rule lives in `packages/engine` as a pure function: `reduce(state, action,
 3. The intent runs through the engine under a **per-draft lock**, so actions for one draft are applied strictly one at a time. The server stamps each intent with the time it *arrived*, so a bid sent just before the buzzer counts even if it's processed a moment later.
 4. The change is **saved to Postgres first**, then broadcast to everyone in the draft's room, then the draft's clock is re-armed.
 
-**Clocks.** The server stores an absolute end time for whatever is live (nomination, lot, tie round, pick) and schedules its own expiry. After a reveal or a Resume, the next clock's end time already includes the 10-second reveal or "back in" countdown, and clients hold their readout until it's over. Clients count down using that end time. On restart, clocks are re-armed from the saved end times; if one expired while the server was down, it's extended and everyone is notified.
+**Clocks.** The server stores an absolute end time for whatever is live (nomination, lot, tie round, pick) and schedules its own expiry. After a reveal or a Resume, the next clock's end time already includes the reveal (its length comes from the engine's shared show timeline) or the 10-second "back in" countdown, and clients hold their readout until it's over. Clients count down using that end time. On restart, clocks are re-armed from the saved end times; if one expired while the server was down, it's extended and everyone is notified.
 
 **Saving.** Each action's changes (lots, bids, picks, the draft row, an audit entry) are written as **one SQL statement** — the whole diff travels as a single JSON parameter applied with data-modifying CTEs. That's atomic without a separate transaction and costs two database round trips, which matters when the database is remote (a single action is acknowledged in ~60 ms against the hosted dev database).
 

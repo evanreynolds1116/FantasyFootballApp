@@ -49,7 +49,7 @@ export function BidScreenLaptop(props: Props) {
       <div className="flex min-w-0 flex-grow flex-col gap-[18px]">
         <div className="flex items-center gap-7 rounded-[20px] border border-line bg-surface px-8 py-7">
           <PlayerCard player={player} nominatedByLabel={nominatedByLabel} size="laptop" />
-          <CountdownRing endsAt={lot.endsAt} paused={paused} totalSeconds={totalSeconds} sizePx={132} label="Time left to bid" />
+          <CountdownRing endsAt={lot.endsAt} remainingMs={lot.remainingMs} paused={paused} totalSeconds={totalSeconds} sizePx={132} label="Time left to bid" />
         </div>
 
         {form.isSubmitted ? (

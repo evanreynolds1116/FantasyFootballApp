@@ -13,6 +13,7 @@ const HEADER_ALIASES: Record<keyof Omit<NewPlayer, "custom">, string[]> = {
   nflTeam: ["team", "nflteam", "nfl", "tm"],
   byeWeek: ["bye", "byeweek"],
   mflId: ["id", "mflid", "playerid"],
+  photoUrl: ["photo", "photourl", "image", "imageurl", "headshot", "picture"],
 };
 
 /** MFL (and some other exports) use these for positions the league's groups call K and DEF. */
@@ -86,7 +87,7 @@ export function parsePlayerCsv(text: string): CsvParseResult {
 
   const header = rows[0]!.map(normalizeHeader);
   const col = (field: keyof typeof HEADER_ALIASES) => header.findIndex((h) => HEADER_ALIASES[field].includes(h));
-  const cols = { name: col("name"), position: col("position"), nflTeam: col("nflTeam"), byeWeek: col("byeWeek"), mflId: col("mflId") };
+  const cols = { name: col("name"), position: col("position"), nflTeam: col("nflTeam"), byeWeek: col("byeWeek"), mflId: col("mflId"), photoUrl: col("photoUrl") };
   if (cols.name < 0 || cols.position < 0) {
     return { players: [], errors: ['The first row needs column headings, including "name" and "position".'] };
   }
@@ -107,6 +108,12 @@ export function parsePlayerCsv(text: string): CsvParseResult {
     if (nflTeam) player.nflTeam = nflTeam;
     const mflId = get(cols.mflId);
     if (mflId) player.mflId = mflId;
+    const photo = get(cols.photoUrl);
+    if (photo) {
+      // Shown as an image on every screen, so only secure links.
+      if (/^https:\/\/\S+$/.test(photo) && photo.length <= 500) player.photoUrl = photo;
+      else errors.push(`Line ${line}: photo "${photo.slice(0, 40)}" isn't an https:// link — kept the player without it.`);
+    }
     const bye = get(cols.byeWeek);
     if (bye) {
       const n = Number(bye);

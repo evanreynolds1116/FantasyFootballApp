@@ -6,6 +6,7 @@ import { applyBidSubmit } from "../../src/rules/bidding.js";
 import { applyLotExpired } from "../../src/rules/reveal.js";
 import { applyAdminUndo } from "../../src/rules/undo.js";
 import { applyAdminBreak, applyAdminResume, BACK_IN_MS } from "../../src/rules/pauseResume.js";
+import { revealDurationMs } from "../../src/revealShow.js";
 import { beginSnake, applyPickMake } from "../../src/rules/snake.js";
 import type { DraftState } from "../../src/model/types.js";
 import { remainingBudget } from "../../src/selectors/budget.js";
@@ -60,21 +61,23 @@ describe("undo", () => {
     expect(liveB.state).toBe("open");
     const endsAt = liveB.endsAt!;
 
-    const res = applyAdminUndo(state, { type: "admin:undo" }, makeCtx(12_000));
+    // Undo 10 s into lot B's clock, which starts once lot A's reveal has played.
+    const undoAt = 2000 + revealDurationMs([{ teamId: "t1", amount: 50 }], "t1") + 10_000;
+    const res = applyAdminUndo(state, { type: "admin:undo" }, makeCtx(undoAt));
     // SPEC key constraint: one open lot per draft at a time.
     const liveLots = res.state.lots.filter((l) => l.state === "open" || l.state === "tieRebid" || l.state === "paused");
     expect(liveLots.map((l) => l.id)).toEqual([lotB!.id]);
     const frozenB = res.state.lots.find((l) => l.id === lotB!.id)!;
     expect(frozenB.endsAt).toBeNull();
-    expect(frozenB.remainingMs).toBe(endsAt - 12_000);
+    expect(frozenB.remainingMs).toBe(endsAt - undoAt);
     expect(res.state.paused).toBe(true);
     expect(res.events.map((e) => e.type)).toEqual(["draft:paused", "draft:undo"]);
 
     // Resume picks lot B back up with the time it had left.
-    const resumed = applyAdminResume(res.state, { type: "admin:resume" }, makeCtx(50_000)).state;
+    const resumed = applyAdminResume(res.state, { type: "admin:resume" }, makeCtx(90_000)).state;
     const resumedB = resumed.lots.find((l) => l.id === lotB!.id)!;
     expect(resumedB.state).toBe("open");
-    expect(resumedB.endsAt).toBe(50_000 + BACK_IN_MS + (endsAt - 12_000));
+    expect(resumedB.endsAt).toBe(90_000 + BACK_IN_MS + (endsAt - undoAt));
     expect(resumed.lots.find((l) => l.id === lotA!.id)?.state).toBe("returnedToPool");
   });
 

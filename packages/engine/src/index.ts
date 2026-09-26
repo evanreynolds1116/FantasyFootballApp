@@ -23,4 +23,4 @@ export * from "./selectors/results.js";
 export { nextPickNo } from "./rules/award.js";
 export { MAX_BUDGET_ADJUSTMENT } from "./rules/rosterAdmin.js";
 export { BACK_IN_MS } from "./rules/pauseResume.js";
-export { REVEAL_HOLD_MS } from "./clock.js";
+export * from "./revealShow.js";

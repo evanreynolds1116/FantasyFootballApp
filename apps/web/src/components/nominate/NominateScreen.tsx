@@ -72,7 +72,9 @@ export function NominateScreen() {
   const [error, setError] = useState("");
   const [onlyQueue, setOnlyQueue] = useState(false);
   const q = useQueue();
-  const { label: clockLabel } = useCountdown(snapshot?.nominationEndsAt ?? null, snapshot?.paused ?? false);
+  const { label: clockLabel } = useCountdown(snapshot?.nominationEndsAt ?? null, snapshot?.paused ?? false, {
+    remainingMs: snapshot?.nominationRemainingMs ?? null,
+  });
 
   if (!snapshot) return null;
   const state = asEngineState(snapshot);

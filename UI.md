@@ -52,9 +52,12 @@ The same screens and rules on every device; only the layout changes.
 - Everyone not nominating sees the same header with "Team N is nominating…" instead of the banner.
 - Every row has a ☆/★ queue toggle next to Nominate, and a "★ My queue (n)" pill in front of the position pills shows just your queued players in your order. Footnote: your queue is private and the top available player is nominated for you if your clock runs out.
 
+### Player photos
+- When the pool CSV has a Photo column, the player's headshot (a team logo for a defense) shows in a circle to the left of the name on the bid card (phone 56px, laptop 120px), the reveal (64px phone, 176px TV) and the big board's live lot (132px). No photo, or one that fails to load, shows the player's initials instead.
+
 ### 2. Bid — phone (`Main.dc.html`, working prototype)
 - Header: round, lot number, who nominated.
-- Player card with a countdown ring and time left.
+- Player card with a countdown ring and time left; the player's photo, then a chip with position · NFL team · bye week above the name (same as the big board).
 - Three stat tiles: budget left, auction spots filled, your count at this player's position vs its max.
 - Amount field (display font, amber border) with "Min $5 · max $[budget]".
 - 3×4 keypad: 1–9, Clear, 0, Delete. Large amber "Lock in sealed bid" button with an outlined "Pass" button beside it (locks you in without bidding; looks like a bid to everyone else).
@@ -69,7 +72,7 @@ The same screens and rules on every device; only the layout changes.
 - Right: every team's max bid, spots filled and count at the live lot's position; teams that can't bid on this player are greyed with the reason; your row highlighted; broke teams in warn color.
 
 ### 3. Reveal (`Reveal.dc.html`)
-- All screens start the same ~8-second show at the same moment on `lot:reveal`, and the server holds the next clock (next lot, nomination turn, tie re-bid or snake pick) until the 10-second reveal is over:
+- All screens start the same show at the same moment on `lot:reveal`, and the server holds the next clock (next lot, nomination turn, tie re-bid or snake pick) until the reveal is over. The timeline is `packages/engine/src/revealShow.ts`, shared by server and screens. With the default top 3: 3rd flips at 2.4 s, 2nd at 3.9 s (1.5 s apart), "And the winner is…" at 5.4 s, winner at 6.4 s, details at 7.8 s, then a 10-second "Up next" countdown — 17.8 s in all. More bids shown flip faster (all flips fit in 5 s); the countdown is always 10 s:
   1. "Bidding closed": one face-down card per locked-in entry (bids and passes look the same), shaking to a speeding-up drumroll (~2.4 s).
   2. Runner-ups the reveal setting allows flip one by one, lowest first, with a thud each.
   3. "And the winner is…" pulses for a beat.
@@ -115,7 +118,7 @@ The same screens and rules on every device; only the layout changes.
 
 ### 7. Big board — TV (`BigBoard.dc.html`)
 - Header: league name and draft; phase, round, "Lot X of Y".
-- Live lot: position chip, player name very large, who nominated, and a very large clock.
+- Live lot: player photo, chip with position · NFL team · bye week, player name very large, who nominated, and a very large clock.
 - "N of M are in" strip with one tile per team, same meaning as the phone strip; ineligible teams show "out".
 - Round lots grid (6 per row): every lot in this round — sold (dimmed, winner and price), bidding now (amber), up next (amber outline), upcoming (player, position, nominator). Note any team that skipped nominating (full or broke) and the next round's direction.
 - Right column: every team's money left and auction spots filled; broke teams in warn color with "broke".

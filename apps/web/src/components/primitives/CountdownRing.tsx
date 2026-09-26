@@ -4,6 +4,8 @@ import { useCountdown } from "../../lib/useCountdown";
 type Props = {
   endsAt: number | null;
   paused: boolean;
+  /** Time left on a paused clock, shown frozen. */
+  remainingMs?: number | null;
   /** The clock setting this ring represents, in seconds — used only to size the ring's fill, never the numeric label. */
   totalSeconds: number | null;
   sizePx: number;
@@ -11,8 +13,8 @@ type Props = {
 };
 
 /** A countdown ring + big digital time. Never the sole signal of urgency — the digits are always present too. */
-export function CountdownRing({ endsAt, paused, totalSeconds, sizePx, label }: Props) {
-  const { secondsLeft, label: timeLabel, danger } = useCountdown(endsAt, paused);
+export function CountdownRing({ endsAt, paused, remainingMs = null, totalSeconds, sizePx, label }: Props) {
+  const { secondsLeft, label: timeLabel, danger } = useCountdown(endsAt, paused, { remainingMs });
   const announceRef = useRef<HTMLDivElement>(null);
   const lastAnnounced = useRef<number | null>(null);
 

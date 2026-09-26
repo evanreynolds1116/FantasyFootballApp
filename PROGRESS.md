@@ -21,7 +21,7 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-243 tests, full 12-team scripted draft acceptance test. Committed.
+244 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
@@ -166,6 +166,31 @@ architecture, the stack, setup and the API.
   - `tests/rules/revealHold.test.ts` (4) and `revealTimeline.test.ts` (7);
     one tie/pause test moved past the reveal. Verified live on a phone:
     stage screenshots, vibration order, next clock at a full 60 s.
+- **Second manual mock draft (user as commissioner + 11 bots, "Test 2")**,
+  with a real 2026 NFL pool: `nfl-players-2026.csv` (in the user's
+  Downloads, not the repo) — 306 players built from MFL's public 2026 data
+  (players, ADP over all 6,729 MFL drafts, bye weeks), MFL ids kept, QB 36 /
+  RB 80 / WR 90 / TE 36 / K 32 / DEF 32, plus a Photo column (Sleeper
+  headshots, team logos for defenses; 305 of 306). Changes from the user's
+  feedback during it:
+  - Reveal pacing: runner-up flips 1.5 s apart (was 0.8 s); the show's
+    timeline moved into the engine (`src/revealShow.ts`) and now always
+    ends with a 10-second "Up next" countdown, so the reveal's length
+    depends on how many bids are shown (top 3: 17.8 s, winner up 11.4 s;
+    winner only 14.8 s; all bids 19.8 s). The server holds the next clock
+    for exactly that (`afterReveal(ctx, durationMs)`), and screens use the
+    same plan. SPEC's time estimate updated (~2 h 5 min for bidding).
+  - Player photos: `player.photo_url` (migration 0009), `photoUrl` on the
+    engine's Player, a Photo/Headshot/Image CSV column (https only, checked
+    by the parser and the server), `PlayerPhoto` with an initials fallback,
+    on the bid card, the reveal (phone + TV) and the big board's live lot.
+  - Bye weeks on the big board's live lot and in rosters/results; the bid
+    card now puts position · team · bye in the chip above the name, like
+    the board.
+  - Fixes: paused clocks showed "--:--" (now the frozen time left, via
+    `useCountdown`'s `remainingMs`); the big board's team list cut off
+    team 12 on 900-px-tall screens (names now one line); the draft screen's
+    "Draft paused" banner had no side margins on phones.
 - **Server CSV export + settings after the start**:
   - `GET /drafts/:id/export.csv` (league members; 404 bad/unknown id) —
     built by the engine's new `selectors/results.ts` (`draftLog`,
@@ -451,7 +476,7 @@ Walkthrough, manual test and nominations session (2026-09-26):
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
   data, CSV parsing, rules summary, start checks, results log/CSV,
-  nomination slots / unavailable reasons, whose turn it is, commissioner edit text, the reveal timeline — 52 tests; the results log/CSV tests moved to the engine) are unit-tested; screens are verified by hand. No Playwright suite yet.
+  nomination slots / unavailable reasons, whose turn it is, commissioner edit text, the reveal timeline, the CSV photo column — 53 tests; the results log/CSV tests moved to the engine) are unit-tested; screens are verified by hand. No Playwright suite yet.
 - **Bid acks under a rush still exceed SPEC's 300 ms** for the last of 12
   simultaneous bidders (~0.7 s) because actions are persisted one at a time
   per draft and each save is ~2 round trips to the remote dev DB. A database
@@ -507,7 +532,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the CSV-export commit. Note `pnpm run typecheck`
+  packages as of the player-photos commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with

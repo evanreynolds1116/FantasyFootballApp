@@ -20,6 +20,7 @@ import { BidStatusStrip } from "../primitives/BidStatusStrip";
 import { DraftNotFound } from "../primitives/DraftNotFound";
 import { CommishNotice } from "../primitives/CommishNotice";
 import { PausedBanner } from "../primitives/PausedBanner";
+import { PlayerPhoto } from "../primitives/PlayerPhoto";
 import { nominationSlots } from "../nominate/nominationData";
 import { NominationsGrid } from "./NominationsGrid";
 import { RoundLotsGrid } from "./RoundLotsGrid";
@@ -114,7 +115,7 @@ export function BigBoardScreen() {
     return (
       <BoardShell phase={snapshot.phase} round={snapshot.auctionRound} lotIndex={null} lotsCount={null} paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt}>
         <div className="flex min-w-0 flex-grow flex-col gap-5">
-          <NominationsGrid round={snapshot.auctionRound} slots={nominationSlots(state)} directionLabel={directionLabel} endsAt={snapshot.nominationEndsAt} paused={snapshot.paused} />
+          <NominationsGrid round={snapshot.auctionRound} slots={nominationSlots(state)} directionLabel={directionLabel} endsAt={snapshot.nominationEndsAt} remainingMs={snapshot.nominationRemainingMs} paused={snapshot.paused} />
         </div>
         <TeamsOverviewBoard rows={teamRows} />
       </BoardShell>
@@ -155,10 +156,12 @@ export function BigBoardScreen() {
     >
       <div className="flex min-w-0 flex-grow flex-col gap-5">
         <LiveLotHero
-          positionAndTeam={player ? `${player.position}${player.nflTeam ? ` · ${player.nflTeam}` : ""}` : ""}
+          player={player}
+          positionAndTeam={player ? [player.position, player.nflTeam, player.byeWeek ? `Bye ${player.byeWeek}` : null].filter(Boolean).join(" · ") : ""}
           name={player?.name ?? "—"}
           nominatorLabel={`Nominated by Team ${nominator?.draftNumber ?? "?"}`}
           endsAt={lot.endsAt}
+          remainingMs={lot.remainingMs}
           paused={snapshot.paused}
         />
 
@@ -181,24 +184,29 @@ export function BigBoardScreen() {
 }
 
 function LiveLotHero({
+  player,
   positionAndTeam,
   name,
   nominatorLabel,
   endsAt,
+  remainingMs,
   paused,
 }: {
+  player: { name: string; position: string; photoUrl?: string } | undefined;
   positionAndTeam: string;
   name: string;
   nominatorLabel: string;
   endsAt: number | null;
+  remainingMs: number | null;
   paused: boolean;
 }) {
-  const { label, danger } = useCountdown(endsAt, paused);
+  const { label, danger } = useCountdown(endsAt, paused, { remainingMs });
   return (
     <div className="flex items-center gap-9 rounded-[24px] border border-line bg-surface px-9 py-6">
-      <div className="flex flex-grow flex-col gap-2">
+      {player && <PlayerPhoto player={player} size={132} />}
+      <div className="flex min-w-0 flex-grow flex-col gap-2">
         <span className="self-start rounded-lg bg-chip px-3 py-1 text-lg font-bold tracking-[0.08em] text-accent">{positionAndTeam}</span>
-        <span className="font-display text-[84px] font-extrabold uppercase leading-[0.9]">{name}</span>
+        <span className="font-display text-[72px] font-extrabold uppercase leading-[0.9]">{name}</span>
         <span className="text-xl text-muted">{nominatorLabel} · Sealed bids close when the clock hits zero</span>
       </div>
       <div className="flex flex-col items-center gap-1">

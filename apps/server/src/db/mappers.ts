@@ -70,6 +70,7 @@ export function playerFromRow(row: PlayerRow): Player {
     position: row.position,
     ...(row.nflTeam ? { nflTeam: row.nflTeam } : {}),
     ...(row.byeWeek !== null ? { byeWeek: row.byeWeek } : {}),
+    ...(row.photoUrl ? { photoUrl: row.photoUrl } : {}),
   };
 }
 

@@ -1,8 +1,8 @@
 import { useCountdown } from "../../lib/useCountdown";
 import type { NominationSlot } from "../nominate/nominationData";
 
-function OnClockCard({ slot, endsAt, paused }: { slot: NominationSlot; endsAt: number | null; paused: boolean }) {
-  const { label, danger } = useCountdown(endsAt, paused);
+function OnClockCard({ slot, endsAt, remainingMs, paused }: { slot: NominationSlot; endsAt: number | null; remainingMs: number | null; paused: boolean }) {
+  const { label, danger } = useCountdown(endsAt, paused, { remainingMs });
   return (
     <div className="flex flex-col gap-0.5 rounded-xl bg-accent px-3.5 py-3 text-on-accent">
       <span className="text-[13px] font-extrabold tracking-[0.06em]">#{slot.order} · NOMINATING NOW</span>
@@ -23,12 +23,15 @@ export function NominationsGrid({
   slots,
   directionLabel,
   endsAt,
+  remainingMs,
   paused,
 }: {
   round: number;
   slots: NominationSlot[];
   directionLabel: string | null;
   endsAt: number | null;
+  /** Time left on the nomination clock while paused, shown frozen. */
+  remainingMs: number | null;
   paused: boolean;
 }) {
   const nominatedCount = slots.filter((s) => s.kind === "nominated").length;
@@ -44,7 +47,7 @@ export function NominationsGrid({
       </div>
       <div className="grid grid-cols-4 gap-2.5">
         {slots.map((s) => {
-          if (s.kind === "onClock") return <OnClockCard key={s.order} slot={s} endsAt={endsAt} paused={paused} />;
+          if (s.kind === "onClock") return <OnClockCard key={s.order} slot={s} endsAt={endsAt} remainingMs={remainingMs} paused={paused} />;
           if (s.kind === "nominated") {
             return (
               <div key={s.order} className="flex flex-col gap-0.5 rounded-xl bg-surface px-3.5 py-3">

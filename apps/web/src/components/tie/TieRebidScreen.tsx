@@ -23,7 +23,7 @@ export function TieRebidScreen({ lot }: { lot: Lot }) {
   // presence — amInTie can flip true→false mid-mount (getting knocked out
   // while viewing this exact screen), so branching JSX only (never skipping
   // a hook call) is required to avoid a real "rendered fewer hooks" crash.
-  const { label: clockLabel } = useCountdown(lot.endsAt, snapshot?.paused ?? false);
+  const { label: clockLabel } = useCountdown(lot.endsAt, snapshot?.paused ?? false, { remainingMs: lot.remainingMs });
   const myPrevious = snapshot && myTeamId ? effectiveAmount(snapshot.bids, lot.id, myTeamId, lot.tieRound - 1) : null;
   const minRequired = (myPrevious ?? 0) + (snapshot?.settings.tieMinRaise ?? 0);
   const budget = snapshot && myTeamId ? remainingBudget(asEngineState(snapshot), myTeamId) : 0;

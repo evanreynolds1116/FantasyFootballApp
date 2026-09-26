@@ -18,7 +18,7 @@ A real-time web app that replaces the whiteboard: every manager nominates and bi
 | Stage | Volume | Target per item | Target total |
 | --- | --- | --- | --- |
 | Auction nominations | 96 players (12 × 8) | 20 s | ~32 min |
-| Sealed bidding + reveal | 96 lots, some ties | 60 s bid + 10 s reveal | ~1 h 55 min |
+| Sealed bidding + reveal | 96 lots, some ties | 60 s bid + ~18 s reveal | ~2 h 5 min |
 | Snake picks | 108 picks (17-man roster) | 45 s max, most faster | ~50 min |
 
 Success = a full 12-team draft finishes in about 3 hours with no manual bookkeeping and no disputes over who bid what.
@@ -178,7 +178,7 @@ stateDiagram-v2
 - A bid is an upsert keyed by (lot, team, tie round); the latest one before close counts. A pass is the same kind of entry with no amount, so bid → pass → bid just replaces it.
 - Server validation: team eligible, amount ≥ minimum bid, multiple of the bid step, ≤ remaining budget, within position maximums, and on a tie re-bid, ≥ that team's previous bid + the minimum tie raise.
 - Amounts are stored server-side only and never shown to anyone before reveal — including the commissioner, who is usually drafting too. The only pre-reveal broadcast is `{teamId, hasBid: true}`.
-- The reveal takes 10 seconds on every screen (a short build-up, then the result); whatever comes next — the next lot, the next nomination turn, a tie re-bid round or the snake — starts its clock only after it. A tie's final result gets the same reveal.
+- The reveal is a build-up (runner-up bids flipping 1.5 s apart), then the winner, then the details with a 10-second "Up next" countdown — about 18 seconds with the default top-3 reveal (15 s winner only, 20 s all bids); whatever comes next — the next lot, the next nomination turn, a tie re-bid round or the snake — starts its clock only after it. A tie's final result gets the same reveal.
 - Reveal sends only what the reveal setting allows (default: winner + next two bids, with team names), in one message, so all screens flip together; hidden losing bids never leave the server. Tie re-bid amounts are always revealed in full. The audit log keeps every bid.
 - Award is one database transaction: lot result, winner's budget, roster slot, player marked drafted, audit entry.
 

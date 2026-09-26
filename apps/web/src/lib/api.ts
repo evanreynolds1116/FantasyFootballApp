@@ -132,6 +132,6 @@ export type InvitePreview = {
   teams: { id: string; name: string; draftNumber: number; claimed: boolean; managerName: string | null }[];
 };
 
-export type PoolPlayer = { id: string; name: string; position: string; nflTeam: string | null; byeWeek: number | null; mflId: string | null; custom: boolean };
+export type PoolPlayer = { id: string; name: string; position: string; nflTeam: string | null; byeWeek: number | null; mflId: string | null; photoUrl: string | null; custom: boolean };
 
-export type NewPlayer = { name: string; position: string; nflTeam?: string; byeWeek?: number; mflId?: string; custom?: boolean };
+export type NewPlayer = { name: string; position: string; nflTeam?: string; byeWeek?: number; mflId?: string; photoUrl?: string; custom?: boolean };

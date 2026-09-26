@@ -39,7 +39,11 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
           <ConnectionBadge status={status} />
         </span>
       </div>
-      {snapshot && <PausedBanner paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt} />}
+      {snapshot && (
+        <div className="px-4 pt-2 empty:hidden md:px-8">
+          <PausedBanner paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt} />
+        </div>
+      )}
       <div className="px-4 pt-2 empty:hidden md:px-8">
         <CommishNotice />
       </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { REVEAL_HOLD_MS, type CommishEdit } from "@draft-app/engine";
+import { revealDurationMs, type CommishEdit } from "@draft-app/engine";
 import type { Socket } from "socket.io-client";
 import type { DraftSnapshot, RevealedBid, RevealPayload } from "../lib/contracts";
 import { createDraftSocket, joinDraft, resync } from "../lib/socket";
@@ -9,8 +9,6 @@ export type ConnectionStatus = "connecting" | "connected" | "reconnecting";
 /** How long a commissioner edit's notice stays up. */
 const NOTICE_DISPLAY_MS = 8_000;
 
-/** How long a reveal stays on screen: exactly as long as the server holds the next clock for it. */
-const REVEAL_DISPLAY_MS = REVEAL_HOLD_MS;
 
 type DraftContextValue = {
   snapshot: DraftSnapshot | null;
@@ -72,9 +70,11 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
 
     const armReveal = (payload: { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null; passes?: number; afterTie?: boolean }) => {
       if (revealTimeout) clearTimeout(revealTimeout);
-      const until = Date.now() + REVEAL_DISPLAY_MS;
+      // Exactly as long as the server holds the next clock for this reveal (same timeline, same bids).
+      const duration = revealDurationMs(payload.bids, payload.winnerTeamId);
+      const until = Date.now() + duration;
       setReveal({ ...payload, passes: payload.passes ?? 0, afterTie: payload.afterTie ?? false, until });
-      revealTimeout = setTimeout(() => setReveal(null), REVEAL_DISPLAY_MS);
+      revealTimeout = setTimeout(() => setReveal(null), duration);
     };
 
     const scheduleResync = () => {

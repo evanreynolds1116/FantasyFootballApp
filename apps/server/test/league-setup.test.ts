@@ -203,6 +203,15 @@ describe("league setup and lobby (FR-01..FR-04, Flow 1)", () => {
     expect(replaced.body).toMatchObject({ added: 3 });
     list = (await call("GET", `/leagues/${leagueId}/players`, commish)).body.players;
     expect(list.map((p) => p.name).sort()).toEqual(["R1", "R2", "R3"]);
+
+    // Photos: https links are stored and listed; anything else is refused (they're shown as images everywhere).
+    const photo = "https://sleepercdn.com/content/nfl/players/4034.jpg";
+    expect((await call("POST", `/leagues/${leagueId}/players`, commish, { players: [{ name: "Pic Guy", position: "RB", photoUrl: photo }] })).status).toBe(201);
+    const withPhoto = ((await call("GET", `/leagues/${leagueId}/players`, commish)).body.players as { name: string; photoUrl: string | null }[]).find((p) => p.name === "Pic Guy");
+    expect(withPhoto?.photoUrl).toBe(photo);
+    for (const bad of ["http://example.com/x.jpg", "javascript:alert(1)", "not a url"]) {
+      expect((await call("POST", `/leagues/${leagueId}/players`, commish, { players: [{ name: "Bad Pic", position: "RB", photoUrl: bad }] })).status).toBe(400);
+    }
   });
 
   it("starts the draft only with a big enough pool, then locks setup", async () => {

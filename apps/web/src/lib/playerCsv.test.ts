@@ -30,6 +30,17 @@ describe("parsePlayerCsv", () => {
     ]);
   });
 
+  it("reads a photo column, keeping only https links", () => {
+    const csv = ["Player,Pos,Photo", "Josh Allen,QB,https://sleepercdn.com/content/nfl/players/4984.jpg", "Sam Reed,RB,http://insecure.example/x.jpg", "Leo Park,WR,"].join("\n");
+    const { players, errors } = parsePlayerCsv(csv);
+    expect(players).toEqual([
+      { name: "Josh Allen", position: "QB", photoUrl: "https://sleepercdn.com/content/nfl/players/4984.jpg" },
+      { name: "Sam Reed", position: "RB" },
+      { name: "Leo Park", position: "WR" },
+    ]);
+    expect(errors).toEqual(["Line 3: photo \"http://insecure.example/x.jpg\" isn't an https:// link — kept the player without it."]);
+  });
+
   it("only needs name and position columns", () => {
     expect(parsePlayerCsv("name,position\nSam Reed,rb").players).toEqual([{ name: "Sam Reed", position: "RB" }]);
   });

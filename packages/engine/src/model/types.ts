@@ -17,6 +17,8 @@ export type Player = {
   position: string;
   nflTeam?: string;
   byeWeek?: number;
+  /** Headshot (or team logo for a defense) — display only; `https://` links from the pool CSV. */
+  photoUrl?: string;
 };
 
 export type LotState =

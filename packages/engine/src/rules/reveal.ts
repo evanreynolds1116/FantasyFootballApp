@@ -1,5 +1,6 @@
 import type { Action } from "../actions/types.js";
 import { afterReveal, type Ctx } from "../clock.js";
+import { revealDurationMs } from "../revealShow.js";
 import { bumpVersion } from "../model/state.js";
 import type { DraftState, Lot } from "../model/types.js";
 import type { Event, RevealedBid } from "../events/types.js";
@@ -29,7 +30,7 @@ function closeInitialLot(state: DraftState, lot: Lot, ctx: Ctx): ReduceResult {
   const winnerTeamId = winners.length === 1 ? (winners[0] as string) : null;
   const passes = state.bids.filter((b) => b.lotId === lot.id && b.tieRound === 0 && !b.superseded && b.pass).length;
   const revealEvent: Event = { type: "lot:reveal", lotId: lot.id, bids: revealedBids, winnerTeamId, passes };
-  const next = afterReveal(ctx);
+  const next = afterReveal(ctx, revealDurationMs(revealedBids, winnerTeamId));
   nextState = { ...nextState, revealHoldUntil: next.now };
 
   if (allBids.length === 0) {

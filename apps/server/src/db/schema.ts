@@ -171,6 +171,8 @@ export const player = pgTable(
     position: text("position").notNull(),
     nflTeam: text("nfl_team"),
     byeWeek: integer("bye_week"),
+    /** Headshot or team-logo URL from the pool CSV; display only. */
+    photoUrl: text("photo_url"),
     status: text("status"),
     custom: boolean("custom").notNull().default(false),
   },

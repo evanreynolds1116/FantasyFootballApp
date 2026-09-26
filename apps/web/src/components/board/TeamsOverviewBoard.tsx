@@ -27,7 +27,8 @@ export function TeamsOverviewBoard({ rows }: { rows: BoardTeamRow[] }) {
             className={`grid grid-cols-[56px_minmax(0,1fr)_88px_64px] gap-2 px-5 py-2.5 text-xl ${row.broke ? "bg-warn-bg text-warn" : ""}`}
           >
             <span>{row.draftNumber}</span>
-            <span>
+            {/* One line per team, so all 12 fit on shorter screens too; the full name is in the tooltip. */}
+            <span className="truncate" title={row.name}>
               {row.name}
               {row.broke ? " · broke" : ""}
             </span>

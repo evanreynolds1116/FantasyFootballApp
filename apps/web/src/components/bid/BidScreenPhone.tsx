@@ -46,7 +46,7 @@ export function BidScreenPhone(props: Props) {
       </div>
 
       <div className="flex items-center gap-4 rounded-panel border border-line bg-surface p-4">
-        <CountdownRing endsAt={lot.endsAt} paused={paused} totalSeconds={totalSeconds} sizePx={96} label="Time left to bid" />
+        <CountdownRing endsAt={lot.endsAt} remainingMs={lot.remainingMs} paused={paused} totalSeconds={totalSeconds} sizePx={96} label="Time left to bid" />
         <PlayerCard player={player} nominatedByLabel={nominatedByLabel} size="phone" />
       </div>
 

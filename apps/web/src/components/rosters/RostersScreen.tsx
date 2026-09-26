@@ -136,6 +136,7 @@ export function TeamDetail({ snapshot, team, sectionRef }: { snapshot: DraftSnap
                           {" · "}
                           {player?.position ?? "?"}
                           {player?.nflTeam ? ` · ${player.nflTeam}` : ""}
+                          {player?.byeWeek ? ` · Bye ${player.byeWeek}` : ""}
                         </span>
                       </span>
                       <span className={`flex-shrink-0 ${pick.source === "auction" ? "font-bold" : "text-muted"}`}>{acquiredLabel(pick)}</span>

@@ -1,4 +1,4 @@
-import { auctionSpotsFilled as engineAuctionSpotsFilled, currentLot, remainingBudget, REVEAL_HOLD_MS } from "@draft-app/engine";
+import { auctionSpotsFilled as engineAuctionSpotsFilled, currentLot, remainingBudget } from "@draft-app/engine";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useCountdown } from "../../lib/useCountdown";
 import type { DraftSnapshot, RevealedBid, RevealPayload } from "../../lib/contracts";
@@ -7,22 +7,23 @@ import { asEngineState } from "../../store/selectors";
 import { fireCue } from "../alerts/cues";
 import { CommishNotice } from "../primitives/CommishNotice";
 import { PausedBanner } from "../primitives/PausedBanner";
+import { PlayerPhoto } from "../primitives/PlayerPhoto";
 import { countUpValue, planReveal, SEALED_MS, type RevealPlan } from "./revealTimeline";
 
 /** How long the winner's own "You won!" takeover stays up. */
 const YOU_WON_MS = 2400;
 
 /** Milliseconds since the reveal began, ticking while the show plays. */
-function useElapsed(startedAt: number): number {
+function useElapsed(startedAt: number, durationMs: number): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
       const t = Date.now();
       setNow(t);
-      if (t - startedAt > REVEAL_HOLD_MS) clearInterval(id);
+      if (t - startedAt > durationMs) clearInterval(id);
     }, 50);
     return () => clearInterval(id);
-  }, [startedAt]);
+  }, [startedAt, durationMs]);
   return now - startedAt;
 }
 
@@ -72,9 +73,9 @@ type RevealView = {
 function useRevealView(reveal: RevealPayload, withSound: boolean): RevealView | null {
   const { snapshot } = useDraft();
   const { label: nextClockLabel } = useCountdown(reveal.until, false, { ignoreHold: true });
-  const startedAt = reveal.until - REVEAL_HOLD_MS;
-  const elapsed = useElapsed(startedAt);
   const plan = useMemo(() => planReveal(reveal.bids, reveal.winnerTeamId), [reveal.bids, reveal.winnerTeamId]);
+  const startedAt = reveal.until - plan.durationMs;
+  const elapsed = useElapsed(startedAt, plan.durationMs);
   const myTeamId = snapshot?.myTeamId ?? null;
   const iWon = myTeamId !== null && reveal.winnerTeamId === myTeamId;
 
@@ -205,12 +206,15 @@ function PhoneReveal({ v }: { v: RevealView }) {
         <span>{v.topShown ? "Bids revealed" : "Bidding closed"}</span>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-muted">
-          {v.player?.position}
-          {v.player?.nflTeam ? ` · ${v.player.nflTeam}` : ""}
-        </span>
-        <span className="font-display text-[40px] font-extrabold uppercase leading-none">{v.player?.name ?? "—"}</span>
+      <div className="flex items-center gap-3">
+        {v.player && <PlayerPhoto player={v.player} size={64} />}
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-sm text-muted">
+            {v.player?.position}
+            {v.player?.nflTeam ? ` · ${v.player.nflTeam}` : ""}
+          </span>
+          <span className="font-display text-[40px] font-extrabold uppercase leading-none">{v.player?.name ?? "—"}</span>
+        </div>
       </div>
 
       {v.faceDown > 0 && (
@@ -332,12 +336,15 @@ function BoardReveal({ v }: { v: RevealView }) {
 
       <div className="flex min-h-0 flex-grow gap-10">
         <div className="flex min-w-0 flex-grow flex-col gap-7">
-          <div className="flex flex-col gap-3">
-            <span className="self-start rounded-lg bg-chip px-3 py-1 text-xl font-bold tracking-[0.08em] text-accent">
-              {v.player?.position}
-              {v.player?.nflTeam ? ` · ${v.player.nflTeam}` : ""}
-            </span>
-            <span className="font-display text-[96px] font-extrabold uppercase leading-[0.9]">{v.player?.name ?? "—"}</span>
+          <div className="flex items-center gap-7">
+            {v.player && <PlayerPhoto player={v.player} size={176} />}
+            <div className="flex min-w-0 flex-col gap-3">
+              <span className="self-start rounded-lg bg-chip px-3 py-1 text-xl font-bold tracking-[0.08em] text-accent">
+                {v.player?.position}
+                {v.player?.nflTeam ? ` · ${v.player.nflTeam}` : ""}
+              </span>
+              <span className="font-display text-[96px] font-extrabold uppercase leading-[0.9]">{v.player?.name ?? "—"}</span>
+            </div>
           </div>
 
           {v.faceDown > 0 && (

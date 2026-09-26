@@ -42,7 +42,7 @@ export function SnakePickScreen() {
   const myTeamId = snapshot.myTeamId;
   const onTheClock = snapshot.snakePickTurnTeamId !== null && snapshot.snakePickTurnTeamId === myTeamId;
   const clockTeam = snapshot.teams.find((t) => t.id === snapshot.snakePickTurnTeamId);
-  const { label: clockLabel } = useCountdown(snapshot.snakePickEndsAt, snapshot.paused);
+  const { label: clockLabel } = useCountdown(snapshot.snakePickEndsAt, snapshot.paused, { remainingMs: snapshot.snakePickRemainingMs });
 
   const isMakeup = snapshot.phase === "makeup";
   const totalRounds = snapshot.settings.rosterSize - snapshot.settings.auctionSpots;

@@ -1,6 +1,5 @@
-import { REVEAL_HOLD_MS } from "@draft-app/engine";
 import { describe, expect, it } from "vitest";
-import { COUNT_UP_MS, countUpValue, planReveal, SEALED_MS } from "./revealTimeline";
+import { COUNT_UP_MS, countUpValue, FLIP_GAP_MS, planReveal, SEALED_MS, UP_NEXT_MS } from "./revealTimeline";
 
 const bid = (teamId: string, amount: number) => ({ teamId, amount });
 
@@ -9,20 +8,23 @@ describe("planReveal", () => {
     const plan = planReveal([bid("t4", 220), bid("t2", 205), bid("t7", 180)], "t4");
     expect(plan.flips.map((f) => [f.bid.teamId, f.at])).toEqual([
       ["t7", SEALED_MS],
-      ["t2", SEALED_MS + 800],
+      ["t2", SEALED_MS + FLIP_GAP_MS],
     ]);
     expect(plan.top).toEqual([bid("t4", 220)]);
     expect(plan.tie).toBe(false);
-    expect(plan.suspenseAt).toBe(SEALED_MS + 1600);
+    expect(plan.suspenseAt).toBe(SEALED_MS + 2 * FLIP_GAP_MS);
     expect(plan.topAt).toBe(plan.suspenseAt! + 1000);
     expect(plan.detailsAt).toBeGreaterThan(plan.topAt);
   });
 
-  it("fits the whole show inside the reveal even when every bid is shown", () => {
+  it('ends every show with a full 10-second "Up next" countdown, even when every bid is shown', () => {
     const bids = Array.from({ length: 12 }, (_, i) => bid(`t${i}`, 300 - i * 5));
     const plan = planReveal(bids, "t0");
     expect(plan.flips).toHaveLength(11);
-    expect(plan.detailsAt + COUNT_UP_MS).toBeLessThan(REVEAL_HOLD_MS);
+    expect(plan.topAt + COUNT_UP_MS).toBeLessThan(plan.detailsAt);
+    expect(plan.durationMs - plan.detailsAt).toBe(UP_NEXT_MS);
+    // All 11 flips still fit in a few seconds.
+    expect(plan.flips.at(-1)!.at - SEALED_MS).toBeLessThanOrEqual(5000);
   });
 
   it("goes straight from the sealed stage to the winner when only the winner is shown", () => {

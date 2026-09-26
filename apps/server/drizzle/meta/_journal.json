@@ -64,6 +64,13 @@
       "when": 1790451048411,
       "tag": "0008_login_code",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790461002125,
+      "tag": "0009_player_photo",
+      "breakpoints": true
     }
   ]
 }

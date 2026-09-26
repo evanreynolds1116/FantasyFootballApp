@@ -1,6 +1,7 @@
 import type { Action } from "../actions/types.js";
 import type { Ctx } from "../clock.js";
 import { afterReveal, endsAtFor } from "../clock.js";
+import { revealDurationMs } from "../revealShow.js";
 import { allocateId, bumpVersion } from "../model/state.js";
 import type { Bid, DraftState, Lot, TeamId } from "../model/types.js";
 import { remainingBudget } from "../selectors/budget.js";
@@ -96,7 +97,7 @@ function evaluateTieRound(state: DraftState, lot: Lot, ctx: Ctx): ReduceResult {
 
   if (winners.length === 1) {
     // The tie's final result gets the same reveal as any other lot, so what comes next waits for it too.
-    const next = afterReveal(ctx);
+    const next = afterReveal(ctx, revealDurationMs(revealedBids, winners[0] as string));
     const awarded = awardAuctionLot({ ...state, revealHoldUntil: next.now }, lot, winners[0] as string, topAmount as number, ctx);
     const advanced = advanceAfterLotResolved(awarded.state, next);
     return { state: advanced.state, events: [revealEvent, ...awarded.events, ...advanced.events] };

@@ -12,7 +12,7 @@ type Props = {
 };
 
 function LiveCard({ lot, player, paused }: { lot: Lot; player: Player | undefined; paused: boolean }) {
-  const { label } = useCountdown(lot.endsAt, paused);
+  const { label } = useCountdown(lot.endsAt, paused, { remainingMs: lot.remainingMs });
   return (
     <div className="flex flex-col gap-0.5 rounded-xl bg-accent px-3.5 py-3 text-on-accent">
       <span className="text-[13px] font-extrabold tracking-[0.06em]">LOT {lot.orderInRound} · BIDDING NOW</span>
