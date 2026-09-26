@@ -14,7 +14,7 @@ const players = [
 
 function snapshot(overrides: Partial<DraftSnapshot> = {}): DraftSnapshot {
   const base = createInitialState(DEFAULT_SETTINGS, teams, players);
-  return { ...base, bids: [], myTeamId: null, isCommissioner: true, connectedTeamIds: [], ...overrides };
+  return { ...base, bids: [], myTeamId: null, isCommissioner: true, connectedTeamIds: [], myQueue: [], ...overrides };
 }
 
 function lot(overrides: Partial<Lot>): Lot {

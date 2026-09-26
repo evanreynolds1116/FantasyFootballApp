@@ -1,5 +1,6 @@
 import type { Action } from "../actions/types.js";
 import type { Ctx } from "../clock.js";
+import { firstQueued } from "../selectors/queue.js";
 import { endsAtFor } from "../clock.js";
 import { bumpVersion } from "../model/state.js";
 import type { DraftState, TeamId } from "../model/types.js";
@@ -106,7 +107,9 @@ export function applyMakeupPickExpired(state: DraftState, action: Extract<Action
     return { state: advanced.state, events: advanced.events };
   }
 
-  const candidateId = availablePlayerIds(state).find((playerId) => isValidMakeupCandidate(state, action.teamId, playerId));
+  // FR-19: the queue first, then the best available player that fits.
+  const fits = (playerId: string) => isValidMakeupCandidate(state, action.teamId, playerId);
+  const candidateId = firstQueued(state, action.teamId, fits) ?? availablePlayerIds(state).find(fits);
   if (!candidateId) {
     const advanced = advanceMakeupTurn(bumpTurns(state), ctx);
     return { state: advanced.state, events: advanced.events };

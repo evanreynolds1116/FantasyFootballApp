@@ -5,6 +5,7 @@ export type Action =
   | { type: "nominate"; teamId: TeamId; playerId: PlayerId }
   | { type: "bid:submit"; teamId: TeamId; lotId: LotId; amount: number }
   | { type: "bid:pass"; teamId: TeamId; lotId: LotId }
+  | { type: "queue:update"; teamId: TeamId; playerIds: PlayerId[] }
   | { type: "tie:rebid"; teamId: TeamId; lotId: LotId; amount: number }
   | { type: "pick:make"; teamId: TeamId; playerId: PlayerId }
   | { type: "admin:start" }

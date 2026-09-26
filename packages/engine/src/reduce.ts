@@ -4,6 +4,7 @@ import type { DraftState } from "./model/types.js";
 import { applyAdminStart } from "./rules/start.js";
 import { applyNominate, applyNominationExpired } from "./rules/nomination.js";
 import { applyBidPass, applyBidSubmit } from "./rules/bidding.js";
+import { applyQueueUpdate } from "./rules/queue.js";
 import { applyLotExpired } from "./rules/reveal.js";
 import { applyResolveTie, applyTieExpired, applyTieRebid } from "./rules/tie.js";
 import { applyPickExpired as applySnakePickExpired, applyPickMake as applySnakePickMake } from "./rules/snake.js";
@@ -21,7 +22,8 @@ import { reject, type ReduceResult } from "./rules/result.js";
  * paused, since pausing freezes every clock and locks entry for everyone.
  */
 export function reduce(state: DraftState, action: Action, ctx: Ctx): ReduceResult {
-  if (state.paused && !action.type.startsWith("admin:")) {
+  // A manager's own queue isn't a draft move, so it stays editable while paused.
+  if (state.paused && !action.type.startsWith("admin:") && action.type !== "queue:update") {
     return reject(state, action, "DRAFT_PAUSED", "The draft is paused.");
   }
 
@@ -36,6 +38,8 @@ export function reduce(state: DraftState, action: Action, ctx: Ctx): ReduceResul
       return applyBidSubmit(state, action, ctx);
     case "bid:pass":
       return applyBidPass(state, action, ctx);
+    case "queue:update":
+      return applyQueueUpdate(state, action, ctx);
     case "clock:lotExpired":
       return applyLotExpired(state, action, ctx);
     case "tie:rebid":

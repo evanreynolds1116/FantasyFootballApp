@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { InvitePanel } from "../components/lobby/InvitePanel";
+import { MyQueuePanel } from "../components/lobby/MyQueuePanel";
 import { PlayerPoolPanel } from "../components/lobby/PlayerPoolPanel";
 import { StartPanel } from "../components/lobby/StartPanel";
 import { TeamsPanel } from "../components/lobby/TeamsPanel";
@@ -71,6 +72,7 @@ function Lobby({ leagueId }: { leagueId: string }) {
         <div className="flex flex-col gap-4">
           {!locked && <StartPanel token={token} league={league} held={teamsBusy} />}
           <TeamsPanel token={token} league={league} onChanged={refresh} onBusyChange={setTeamsBusy} />
+          {!locked && league.teams.some((t) => t.isMine) && <MyQueuePanel token={token} leagueId={league.id} playerCount={league.playerCount} />}
         </div>
         <div className="flex flex-col gap-4">
           <InvitePanel token={token} leagueId={league.id} inviteCode={league.inviteCode} isCommissioner={league.isCommissioner} locked={locked} onChanged={() => void refresh()} />

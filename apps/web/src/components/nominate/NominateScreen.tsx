@@ -4,6 +4,8 @@ import { useCountdown } from "../../lib/useCountdown";
 import { emitIntent } from "../../lib/socket";
 import { useDraft } from "../../store/DraftProvider";
 import { asEngineState } from "../../store/selectors";
+import { QueueStar } from "../queue/QueueStar";
+import { useQueue } from "../queue/useQueue";
 import { nominationSlots, unavailableReason, type NominationSlot } from "./nominationData";
 
 const POSITION_PILLS = ["All", "QB", "RB", "WR/TE", "K", "DEF"] as const;
@@ -68,6 +70,8 @@ export function NominateScreen() {
   const [search, setSearch] = useState("");
   const [pill, setPill] = useState<PositionPill>("All");
   const [error, setError] = useState("");
+  const [onlyQueue, setOnlyQueue] = useState(false);
+  const q = useQueue();
   const { label: clockLabel } = useCountdown(snapshot?.nominationEndsAt ?? null, snapshot?.paused ?? false);
 
   if (!snapshot) return null;
@@ -83,12 +87,15 @@ export function NominateScreen() {
   const directionLabel =
     order.length > 1 ? `${teamById.get(order[0]!)?.draftNumber} → ${teamById.get(order[order.length - 1]!)?.draftNumber}` : null;
 
-  const q = search.trim().toLowerCase();
-  const matchesSearch = (p: { name: string; nflTeam?: string }) => !q || p.name.toLowerCase().includes(q) || (p.nflTeam ?? "").toLowerCase().includes(q);
+  const term = search.trim().toLowerCase();
+  const matchesSearch = (p: { name: string; nflTeam?: string }) => !term || p.name.toLowerCase().includes(term) || (p.nflTeam ?? "").toLowerCase().includes(term);
   const availableIds = new Set(availablePlayerIds(state));
-  const available = snapshot.players.filter((p) => availableIds.has(p.id) && matchesPill(p.position, pill) && matchesSearch(p));
+  const playerById = new Map(snapshot.players.map((p) => [p.id, p]));
+  // "My queue" shows your queued players in your order; otherwise the whole pool in its ranked order.
+  const listed = onlyQueue ? q.available.map((id) => playerById.get(id)!).filter(Boolean) : snapshot.players.filter((p) => availableIds.has(p.id));
+  const available = listed.filter((p) => matchesPill(p.position, pill) && matchesSearch(p));
   // While searching, players who match but can't be nominated are listed with the reason, instead of silently missing.
-  const taken = q ? snapshot.players.filter((p) => !availableIds.has(p.id) && matchesPill(p.position, pill) && matchesSearch(p)) : [];
+  const taken = term && !onlyQueue ? snapshot.players.filter((p) => !availableIds.has(p.id) && matchesPill(p.position, pill) && matchesSearch(p)) : [];
 
   const nominate = async (playerId: string) => {
     setError("");
@@ -131,6 +138,16 @@ export function NominateScreen() {
       </label>
 
       <div className="flex flex-wrap gap-1.5">
+        {q.canQueue && (
+          <button
+            type="button"
+            aria-pressed={onlyQueue}
+            onClick={() => setOnlyQueue((v) => !v)}
+            className={`h-9 rounded-full px-3 text-sm font-semibold ${onlyQueue ? "bg-accent text-on-accent" : "border border-line bg-transparent text-text"}`}
+          >
+            ★ My queue ({q.available.length})
+          </button>
+        )}
         {POSITION_PILLS.map((p) => {
           const active = pill === p;
           return (
@@ -154,7 +171,11 @@ export function NominateScreen() {
       )}
 
       <div className="flex flex-col overflow-hidden rounded-[14px] border border-line">
-        {available.length === 0 && taken.length === 0 && <div className="px-4 py-4 text-sm text-muted">No players match.</div>}
+        {available.length === 0 && taken.length === 0 && (
+          <div className="px-4 py-4 text-sm text-muted">
+            {onlyQueue && q.available.length === 0 ? "Your queue is empty. Tap ☆ on any player to add him." : "No players match."}
+          </div>
+        )}
         {available.map((p, i) => (
           <div key={p.id} className={`flex items-center gap-3 bg-surface px-3.5 py-3 ${i > 0 ? "border-t border-line" : ""}`}>
             <span className="w-11 text-xs font-bold text-accent">{p.position}</span>
@@ -165,6 +186,7 @@ export function NominateScreen() {
                 {p.byeWeek ? ` · Bye ${p.byeWeek}` : ""}
               </span>
             </div>
+            {q.canQueue && <QueueStar queued={q.isQueued(p.id)} onToggle={() => q.toggle(p.id)} name={p.name} />}
             <button
               type="button"
               disabled={!onTheClock}
@@ -185,6 +207,16 @@ export function NominateScreen() {
           </div>
         ))}
       </div>
+      {q.error && (
+        <div role="alert" className="text-sm font-semibold text-warn">
+          {q.error}
+        </div>
+      )}
+      {q.canQueue && (
+        <div className="text-[13px] text-muted">
+          ★ Your queue is private. If your nomination clock runs out, the top available player in it is nominated for you.
+        </div>
+      )}
     </div>
   );
 }

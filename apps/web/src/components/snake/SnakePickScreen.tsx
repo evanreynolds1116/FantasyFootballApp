@@ -13,6 +13,8 @@ import { useCountdown } from "../../lib/useCountdown";
 import { emitIntent } from "../../lib/socket";
 import { useDraft } from "../../store/DraftProvider";
 import { asEngineState } from "../../store/selectors";
+import { QueueStar } from "../queue/QueueStar";
+import { useQueue } from "../queue/useQueue";
 import { SnakeBoardGrid } from "./SnakeBoardGrid";
 
 const POSITION_PILLS = ["All", "QB", "RB", "WR/TE", "K", "DEF"] as const;
@@ -32,6 +34,7 @@ export function SnakePickScreen() {
   const [search, setSearch] = useState("");
   const [pill, setPill] = useState<PositionPill>("All");
   const [error, setError] = useState("");
+  const q = useQueue();
 
   if (!snapshot) return null;
   const state = asEngineState(snapshot);
@@ -83,6 +86,24 @@ export function SnakePickScreen() {
       if (!q) return true;
       return p.name.toLowerCase().includes(q) || (p.nflTeam ?? "").toLowerCase().includes(q);
     });
+
+  /** Whether a player can be drafted by you right now, and if not (on your turn), why — shared by the Available list and your queue. */
+  const pickability = (p: { position: string }) => {
+    const group = positionGroupFor(snapshot.settings.positionGroups, p.position);
+    const maxedOut = myTeamId ? wouldExceedPositionMax(state, myTeamId, p.position) : false;
+    const wouldBreakMinimums = myTeamId ? !remainingMinimumsReachable(state, myTeamId, p.position) : false;
+    const disqualified = maxedOut || wouldBreakMinimums || !onTheClock;
+    const reason = !onTheClock
+      ? undefined
+      : maxedOut
+        ? `You already have ${group ? `${group.max} of ${group.max} ${group.name}` : "the max at this position"}`
+        : wouldBreakMinimums
+          ? "This pick would make a roster minimum unreachable"
+          : undefined;
+    return { disqualified, reason };
+  };
+  const playerById = new Map(snapshot.players.map((pl) => [pl.id, pl]));
+  const queuedPlayers = q.available.map((id) => playerById.get(id)!).filter(Boolean);
 
   const draft = async (playerId: string) => {
     setError("");
@@ -150,14 +171,65 @@ export function SnakePickScreen() {
             onClick={() => setTab(t)}
             className={`h-10 flex-grow rounded-ctl text-sm font-bold ${tab === t ? "bg-text text-bg" : "border border-line bg-transparent text-text font-semibold"}`}
           >
-            {t === "available" ? "Available" : t === "queue" ? "My queue" : "Board"}
+            {t === "available" ? "Available" : t === "queue" ? `My queue (${q.available.length})` : "Board"}
           </button>
         ))}
       </div>
 
       {tab === "queue" && (
-        <div className="rounded-panel border border-line bg-surface px-5 py-6 text-center text-muted">
-          The watchlist/queue isn&apos;t built yet — bookmark players you like and draft them manually for now.
+        <div className="flex flex-col gap-2">
+          {queuedPlayers.length === 0 ? (
+            <div className="rounded-panel border border-line bg-surface px-5 py-6 text-center text-muted">
+              Your queue is empty. Tap ☆ next to any player to add him — your best choice first.
+            </div>
+          ) : (
+            <ol className="flex flex-col overflow-hidden rounded-[14px] border border-line">
+              {queuedPlayers.map((p, i) => {
+                const { disqualified, reason } = pickability(p);
+                return (
+                  <li key={p.id} className={`flex items-center gap-2 bg-surface px-3 py-2.5 ${i > 0 ? "border-t border-line" : ""}`}>
+                    <span className="w-6 text-center font-display text-lg font-extrabold text-muted">{i + 1}</span>
+                    <div className="flex min-w-0 flex-grow flex-col">
+                      <span className={`truncate text-base font-semibold ${disqualified && onTheClock ? "text-muted" : ""}`}>{p.name}</span>
+                      <span className="truncate text-[13px] text-muted">
+                        {p.position}
+                        {p.nflTeam ? ` · ${p.nflTeam}` : ""}
+                        {reason ? ` · ${reason}` : ""}
+                      </span>
+                    </div>
+                    <button type="button" aria-label={`Move ${p.name} up`} disabled={i === 0} onClick={() => q.move(p.id, -1)} className="h-9 w-9 rounded-lg bg-surface-2 disabled:opacity-30">
+                      ↑
+                    </button>
+                    <button type="button" aria-label={`Move ${p.name} down`} disabled={i === queuedPlayers.length - 1} onClick={() => q.move(p.id, 1)} className="h-9 w-9 rounded-lg bg-surface-2 disabled:opacity-30">
+                      ↓
+                    </button>
+                    <button type="button" aria-label={`Remove ${p.name} from your queue`} onClick={() => q.remove(p.id)} className="h-9 w-9 rounded-lg border border-line text-muted">
+                      ✕
+                    </button>
+                    {onTheClock && (
+                      <button
+                        type="button"
+                        disabled={disqualified}
+                        onClick={() => void draft(p.id)}
+                        className="h-9 rounded-lg bg-accent px-3 text-sm font-bold text-on-accent disabled:border disabled:border-line disabled:bg-transparent disabled:text-muted"
+                      >
+                        Draft
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {error && (
+            <div role="alert" className="text-sm font-semibold text-warn">
+              {error}
+            </div>
+          )}
+          <div className="text-[13px] text-muted">
+            Your queue is private. Players who get taken drop off it automatically.
+            {snapshot.settings.pickExpiryAction === "autoPick" && " If your clock runs out, you get the first player in it who fits your roster."}
+          </div>
         </div>
       )}
 
@@ -215,17 +287,7 @@ export function SnakePickScreen() {
               <div className="px-4 py-4 text-sm text-muted">No players match.</div>
             ) : (
               available.map((p, i) => {
-                const group = positionGroupFor(snapshot.settings.positionGroups, p.position);
-                const maxedOut = myTeamId ? wouldExceedPositionMax(state, myTeamId, p.position) : false;
-                const wouldBreakMinimums = myTeamId ? !remainingMinimumsReachable(state, myTeamId, p.position) : false;
-                const disqualified = maxedOut || wouldBreakMinimums || !onTheClock;
-                const reason = !onTheClock
-                  ? undefined
-                  : maxedOut
-                    ? `You already have ${group ? `${group.max} of ${group.max} ${group.name}` : "the max at this position"}`
-                    : wouldBreakMinimums
-                      ? "This pick would make a roster minimum unreachable"
-                      : undefined;
+                const { disqualified, reason } = pickability(p);
 
                 return (
                   <div key={p.id} className={`flex items-center gap-3 px-3.5 py-3 ${i > 0 ? "border-t border-line" : ""} ${disqualified && onTheClock ? "bg-[#131B16]" : "bg-surface"}`}>
@@ -234,6 +296,7 @@ export function SnakePickScreen() {
                       <span className={`text-base font-semibold ${disqualified && onTheClock ? "text-muted" : ""}`}>{p.name}</span>
                       <span className="text-[13px] text-muted">{reason ? `${p.nflTeam} · ${reason}` : `${p.nflTeam ?? ""}${p.byeWeek ? ` · Bye ${p.byeWeek}` : ""}`}</span>
                     </div>
+                    {q.canQueue && <QueueStar queued={q.isQueued(p.id)} onToggle={() => q.toggle(p.id)} name={p.name} />}
                     <button
                       type="button"
                       disabled={disqualified}
@@ -251,7 +314,7 @@ export function SnakePickScreen() {
           <div className="mt-auto text-[13px] text-muted">
             {snapshot.settings.pickExpiryAction === "skip"
               ? "If the clock runs out, your turn moves to the end of this round and you'll pick then instead."
-              : "If the clock runs out, you'll automatically get the next available player that fits your roster (the queue isn't built yet, so this may not be your preference)."}
+              : "If the clock runs out, you get the first player in your queue who fits your roster, or else the best available player who does."}
           </div>
         </>
       )}

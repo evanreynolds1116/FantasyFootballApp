@@ -1,5 +1,6 @@
 import type { Action } from "../actions/types.js";
 import type { Ctx } from "../clock.js";
+import { firstQueued } from "../selectors/queue.js";
 import { allocateId, bumpVersion } from "../model/state.js";
 import type { DraftState, Lot } from "../model/types.js";
 import { canNominate } from "../selectors/eligibility.js";
@@ -104,12 +105,12 @@ export function applyNominationExpired(
     return ok(state, []);
   }
   const teamId = state.nominationTurnTeamId;
-  // Placeholder auto-nominate ranking: player-pool insertion order (no ADP/watchlist data in phase 1).
+  // SPEC: auto-nominate the top of their queue, else the highest-ranked available (pool order).
   const available = availablePlayerIds(state);
   if (available.length === 0) {
     return ok(state, []);
   }
-  const playerId = available[0] as string;
+  const playerId = firstQueued(state, teamId) ?? (available[0] as string);
   const { lot, state: withLot } = createQueuedLot(state, playerId, teamId);
   return afterNomination(withLot, lot, ctx, []);
 }

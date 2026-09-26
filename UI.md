@@ -50,6 +50,7 @@ The same screens and rules on every device; only the layout changes.
 - "Nominated this round" list right under the banner (so the team on the clock sees it before searching): each player put up so far and by whom, who is nominating now and who's still to come, with the round's direction (1 → 12 or 12 → 1).
 - Searching for a player who can't be nominated shows them greyed with the reason ("Already nominated this round — Lot 3, by Team 4", "Already drafted by Team 2 ($96)") instead of just "no players match".
 - Everyone not nominating sees the same header with "Team N is nominating…" instead of the banner.
+- Every row has a ☆/★ queue toggle next to Nominate, and a "★ My queue (n)" pill in front of the position pills shows just your queued players in your order. Footnote: your queue is private and the top available player is nominated for you if your clock runs out.
 
 ### 2. Bid — phone (`Main.dc.html`, working prototype)
 - Header: round, lot number, who nominated.
@@ -87,6 +88,8 @@ The same screens and rules on every device; only the layout changes.
 - Tabs: Available, My queue (count), Board.
 - Search field and position filter pills (same as Nominate).
 - Player rows with a Draft button; players the team can't take are greyed with the reason ("You already have 7 of 7 WR/TE") and a disabled button.
+- Available rows have a ☆/★ queue toggle next to Draft.
+- My queue tab: your ranked players still available, numbered, with ↑ ↓ ✕ and (on the clock) a Draft button; taken players drop off. Note that it's private and used for auto-pick.
 - Footer note on auto-pick when the clock runs out.
 - Board tab: rounds × teams grid with the pick on the clock highlighted.
 

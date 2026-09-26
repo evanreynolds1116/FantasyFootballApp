@@ -52,6 +52,8 @@ export type Event =
       pick: ClockSetting;
     }
   | { type: "settings:revealTopN"; revealTopN: number | "all" }
+  /** PRIVATE to that team's manager — the server must never broadcast it to the room. */
+  | { type: "queue:updated"; teamId: TeamId; playerIds: PlayerId[] }
   | { type: "draft:undo"; undone: { kind: "award" | "pick"; teamId: TeamId; playerId: PlayerId } }
   | { type: "player:unavailable"; playerId: PlayerId }
   // Phase-2 note: this echoes the full original Action, which may include a

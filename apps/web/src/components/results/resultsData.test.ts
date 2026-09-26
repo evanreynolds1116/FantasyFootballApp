@@ -52,6 +52,7 @@ function snapshot(): DraftSnapshot {
     myTeamId: null,
     isCommissioner: false,
     connectedTeamIds: [],
+    myQueue: [],
   };
 }
 

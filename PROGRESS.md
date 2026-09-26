@@ -7,6 +7,8 @@ secrecy, make-up turn order, a server crash, persistence latency), added a
 Pass option to auction bidding, wrote the README, made a screenshot walkthrough
 for the league, ran a manual test (user as commissioner + 11 bots), and added a
 live "nominated this round" list to the nominate screen and big board.
+Then (same day) built the watchlist/queue (FR-19); sounds and vibration
+(FR-20) are next.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -14,12 +16,12 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-205 tests, full 12-team scripted draft acceptance test. Committed.
+214 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests (now 33) including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 35) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
 **Phase 3 — UI (`apps/web`)**: every screen in SPEC's table is built and
@@ -28,7 +30,8 @@ verified in headless Chrome against a live server, including the pre-draft flow
 works through the UI alone, and two full-length 12-team scripted mock drafts
 (see "Mock draft runs" below) have finished clean. SPEC's phase-3 "done when" —
 friends complete a mock draft on phones — hasn't happened yet. Committed
-through `468cf86` (nominations list), plus this PROGRESS update. [README.md](README.md) walks through every screen, the rules, the
+through `468cf86` (nominations list), then README screenshots and the
+watchlist/queue (see below). [README.md](README.md) walks through every screen, the rules, the
 architecture, the stack, setup and the API.
 
 ## What's actually built and working in apps/web
@@ -123,6 +126,15 @@ architecture, the stack, setup and the API.
   bids that were revealed, and a client-side CSV download (FR-18). The big
   board link needs no login, so it doubles as the shareable results page.
   There's no server `/drafts/:id/export.csv` route yet.
+- **Watchlist/queue** (FR-19, `components/queue/`, `lobby/MyQueuePanel.tsx`) —
+  one ranked, private queue per manager. Built in the lobby ("My queue" panel:
+  search, star, ↑ ↓ ✕) or during the draft (☆/★ on every nominate and snake
+  row, a "★ My queue (n)" filter on the nominate screen, a ranked "My queue"
+  tab on snake pick with a Draft button). Taken players drop off. When a
+  clock runs out, auto-nominate takes the top available queued player and
+  auto-pick the first queued player who fits the roster, each falling back
+  to the old best-available rule. Verified live in headless Chrome
+  (lobby queue → auto-nominate → snake auto-pick), no page errors.
 - A draft link with a bad/unknown id shows "Draft not found" instead of
   loading forever (`primitives/DraftNotFound.tsx`).
 - `routes/DraftSubpage.tsx` is the shared frame (back link, connection badge,
@@ -269,6 +281,17 @@ Walkthrough, manual test and nominations session (2026-09-26):
 - **Nominations list** (`468cf86`, user's feature request): the nominate
   screen and big board changes above. Display only, no rule change; UI.md
   updated.
+- **Queue storage and privacy:** engine gained `queues` in DraftState, a
+  `queue:update` action (allowed while paused, max 200 players, deduped) and
+  a private `queue:updated` event; `firstQueued` / `availableQueue`
+  selectors feed auto-nominate and auto-pick. Server: new `team_queue` table
+  (migration `0007`, applied to the dev DB), saved in the same single-statement
+  persist; snapshots strip `queues` and add `myQueue` only for the viewer;
+  `queue:updated` goes out as `you:private` to that manager's own sockets
+  only; `GET/PUT /leagues/:id/queue` for the lobby (PUT goes through the
+  engine once a draft exists). `test/queue.test.ts` checks nobody else ever
+  receives a queue. SPEC (FR-19, data model, events, edge cases) and UI.md
+  updated.
 - `bid-secrecy.test.ts`'s pass test now scopes its bid lookup to its own
   draft — lot ids ("lot_N") repeat across drafts, so it had started counting
   TEST LEAGUE's passes.
@@ -280,9 +303,6 @@ Walkthrough, manual test and nominations session (2026-09-26):
   live MFL player import is still phase 4 (CSV of an MFL export works).
 - **Real auth is still phase-4.** Login is the dev-only `/dev/session` shim;
   real magic-link auth was explicitly deferred back in phase 2 planning.
-- **Watchlist/queue isn't built.** Snake pick's "My queue" tab shows an
-  explicit "isn't built yet" placeholder rather than faking it — this needs
-  its own server-side storage (nothing exists for it in phase 2 either).
 - **Big board has no league name** — no endpoint currently exposes it to an
   unauthenticated board view, so the header just says "Draft Day".
 - **Big board's "skipped nomination" note is omitted** (e.g. "Team 11 is
@@ -331,8 +351,10 @@ In rough priority order:
 3. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
    Decide whether the dev login is acceptable for it (anyone who types
    someone's email can sign in as them) or magic links come first.
-4. The console gaps listed above.
-3. Real auth, watchlist/queue, a server CSV export route, settings-editing
+4. **Sounds and vibration** (FR-20) — in progress next: "you're on the
+   clock", 10-second warning, reveal.
+5. The console gaps listed above.
+6. Real auth, a server CSV export route, settings-editing
    after creation — all previously deferred to phase 3/4, still deferred.
 
 ## Mock draft runs
@@ -357,7 +379,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of `468cf86`. Note `pnpm run typecheck`
+  packages as of the queue commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with

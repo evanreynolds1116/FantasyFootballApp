@@ -4,7 +4,7 @@ import { createDraft } from "../../db/createDraft.js";
 import { auditEvent, draft } from "../../db/schema.js";
 import { toPublicSnapshot } from "../../shared/publicSnapshot.js";
 import { requireAuth } from "../auth.js";
-import { assertCommissioner } from "../authz.js";
+import { assertCommissioner, findOwnedTeamId } from "../authz.js";
 
 export async function registerDraftRoutes(app: FastifyInstance): Promise<void> {
   app.post("/leagues/:id/drafts", { preHandler: requireAuth }, async (request, reply) => {
@@ -22,7 +22,9 @@ export async function registerDraftRoutes(app: FastifyInstance): Promise<void> {
   app.get("/drafts/:id/state", { preHandler: requireAuth }, async (request, reply) => {
     const { id: draftId } = request.params as { id: string };
     const state = await request.server.engineRuntime.getOrHydrate(draftId);
-    return reply.send(toPublicSnapshot(state));
+    const [row] = await request.server.db.select({ leagueId: draft.leagueId }).from(draft).where(eq(draft.id, draftId)).limit(1);
+    const myTeamId = row ? await findOwnedTeamId(request.server.db, request.userId!, row.leagueId) : null;
+    return reply.send(toPublicSnapshot(state, myTeamId));
   });
 
   // Commissioner-only for now: audit rows store the full Action, which can include

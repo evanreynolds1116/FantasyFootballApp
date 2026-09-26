@@ -37,6 +37,7 @@ export function createInitialState(
     makeupRoundTurnsTaken: 0,
 
     unavailablePlayerIds: [],
+    queues: {},
 
     lastAwardOrPick: null,
   };

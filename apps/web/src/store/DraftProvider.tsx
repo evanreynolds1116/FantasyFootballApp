@@ -20,8 +20,9 @@ type DraftContextValue = {
 
 const DraftContext = createContext<DraftContextValue | null>(null);
 
-type RawSnapshot = Omit<DraftSnapshot, "myTeamId" | "isCommissioner" | "connectedTeamIds"> & {
+type RawSnapshot = Omit<DraftSnapshot, "myTeamId" | "isCommissioner" | "connectedTeamIds" | "myQueue"> & {
   myTeamId?: string | null;
+  myQueue?: string[];
   isCommissioner?: boolean;
   connectedTeamIds?: string[];
 };
@@ -52,6 +53,7 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     let lastMyTeamId: string | null = null;
     let lastIsCommissioner = false;
     let lastConnectedTeamIds: string[] = [];
+    let lastMyQueue: string[] = [];
     let revealTimeout: ReturnType<typeof setTimeout> | null = null;
     // A tie's *final* round resolves via lot:tieRebidRevealed + lot:awarded
     // — never lot:reveal, which only fires for a lot's very first (untied)
@@ -85,10 +87,20 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
       const myTeamId = raw.myTeamId !== undefined ? raw.myTeamId : lastMyTeamId;
       const isCommissioner = raw.isCommissioner ?? lastIsCommissioner;
       const connectedTeamIds = raw.connectedTeamIds ?? lastConnectedTeamIds;
+      // Room-wide snapshots (undo) carry no queue at all — queues are private.
+      const myQueue = raw.myQueue ?? lastMyQueue;
       lastMyTeamId = myTeamId;
       lastIsCommissioner = isCommissioner;
       lastConnectedTeamIds = connectedTeamIds;
-      setSnapshot({ ...raw, myTeamId, isCommissioner, connectedTeamIds } as DraftSnapshot);
+      lastMyQueue = myQueue;
+      setSnapshot({ ...raw, myTeamId, isCommissioner, connectedTeamIds, myQueue } as DraftSnapshot);
+    };
+
+    const applyPrivate = (payload: unknown) => {
+      const { queue } = payload as { queue?: string[] };
+      if (!queue) return;
+      lastMyQueue = queue;
+      setSnapshot((prev) => (prev ? { ...prev, myQueue: queue } : prev));
     };
 
     const applyPresence = (payload: unknown) => {
@@ -118,6 +130,11 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
       // rather than triggering a resync like every other event.
       if (eventName === "presence:update") {
         applyPresence(payload);
+        return;
+      }
+      // Sent only to this manager's own sockets; nothing else changed, so no resync.
+      if (eventName === "you:private") {
+        applyPrivate(payload);
         return;
       }
       if (eventName === "lot:reveal") {

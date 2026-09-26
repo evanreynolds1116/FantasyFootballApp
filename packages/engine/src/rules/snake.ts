@@ -1,5 +1,6 @@
 import type { Action } from "../actions/types.js";
 import type { Ctx } from "../clock.js";
+import { firstQueued } from "../selectors/queue.js";
 import { endsAtFor } from "../clock.js";
 import { bumpVersion } from "../model/state.js";
 import type { DraftState } from "../model/types.js";
@@ -136,7 +137,9 @@ export function applyPickExpired(state: DraftState, action: Extract<Action, { ty
     return { state: advanced.state, events: advanced.events };
   }
 
-  const candidateId = availablePlayerIds(state).find((playerId) => isValidSnakeCandidate(state, action.teamId, playerId));
+  // FR-19: auto-pick uses the queue first, then the best available player that fits.
+  const fits = (playerId: string) => isValidSnakeCandidate(state, action.teamId, playerId);
+  const candidateId = firstQueued(state, action.teamId, fits) ?? availablePlayerIds(state).find(fits);
   if (!candidateId) {
     // No valid candidate found: fall back to a deferred catch-up rather than corrupting state.
     const deferred = [...state.deferredPicks, { teamId: action.teamId, round: state.snakeRound }];

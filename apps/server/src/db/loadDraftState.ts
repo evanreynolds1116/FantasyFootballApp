@@ -1,9 +1,9 @@
 import type { DraftState } from "@draft-app/engine";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Db } from "./client.js";
 import type { EngineBookkeeping } from "./engineState.js";
 import { bidFromRow, lotFromRow, pickFromRow, playerFromRow, settingsFromRow, teamFromRow } from "./mappers.js";
-import { bid, draft, draftSettings, lot, pick, player, team } from "./schema.js";
+import { bid, draft, draftSettings, lot, pick, player, team, teamQueue } from "./schema.js";
 
 export class DraftNotFoundError extends Error {
   constructor(draftId: string) {
@@ -33,6 +33,10 @@ export async function loadDraftState(db: Db, draftId: string): Promise<DraftStat
   ]);
 
   const bookkeeping = draftRow.engineState as EngineBookkeeping;
+  const queueRows = teamRows.length
+    ? await db.select().from(teamQueue).where(inArray(teamQueue.teamId, teamRows.map((t) => t.id)))
+    : [];
+  const queues = Object.fromEntries(queueRows.map((q) => [q.teamId, (q.playerIds as string[]) ?? []]));
 
   return {
     settings: settingsFromRow(settingsRow),
@@ -50,5 +54,6 @@ export async function loadDraftState(db: Db, draftId: string): Promise<DraftStat
     bids: bidRows.map(bidFromRow),
     picks: pickRows.slice().sort((a, b) => a.pickNo - b.pickNo).map(pickFromRow),
     ...bookkeeping,
+    queues,
   };
 }

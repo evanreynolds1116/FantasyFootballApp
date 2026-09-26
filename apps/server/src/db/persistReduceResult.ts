@@ -66,6 +66,9 @@ export async function persistReduceResult(
   const removedPickIds = prevState.picks.filter((p) => !nextPickIds.has(p.id)).map((p) => p.id);
   const prevPickIds = new Set(prevState.picks.map((p) => p.id));
   const addedPicks = nextState.picks.filter((p) => !prevPickIds.has(p.id)).map((p) => jsonRow(pickToRow(draftId, p)));
+  const queues = Object.entries(nextState.queues)
+    .filter(([teamId, ids]) => prevState.queues[teamId] !== ids)
+    .map(([teamId, ids]) => ({ team_id: teamId, player_ids: ids }));
 
   const payload = {
     draftId,
@@ -76,6 +79,7 @@ export async function persistReduceResult(
     bids,
     removedPickIds,
     addedPicks,
+    queues,
     draft: {
       phase: nextState.phase,
       auction_round: nextState.auctionRound,
@@ -140,6 +144,13 @@ export async function persistReduceResult(
         engine_state = p.j->'draft'->'engine_state'
       from p
       where draft.id = (p.j->>'draftId')::uuid
+      returning 1
+    ),
+    queue_up as (
+      insert into team_queue (team_id, player_ids, updated_at)
+      select r.team_id, r.player_ids, now()
+      from p, jsonb_to_recordset(p.j->'queues') as r(team_id uuid, player_ids jsonb)
+      on conflict (team_id) do update set player_ids = excluded.player_ids, updated_at = now()
       returning 1
     ),
     audit as (

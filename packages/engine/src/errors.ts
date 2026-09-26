@@ -14,4 +14,5 @@ export type ErrorCode =
   | "DRAFT_PAUSED"
   | "INVALID_PHASE"
   | "NOTHING_TO_UNDO"
-  | "NOT_TIE_FALLBACK";
+  | "NOT_TIE_FALLBACK"
+  | "INVALID_QUEUE";

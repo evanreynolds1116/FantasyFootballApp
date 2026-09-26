@@ -21,7 +21,7 @@ function pick(overrides: Partial<Pick>): Pick {
 
 function snapshot(picks: Pick[], settings: Partial<DraftSettings> = {}, myTeamId: string | null = "t1"): DraftSnapshot {
   const base = createInitialState({ ...DEFAULT_SETTINGS, startingBudget: 1000, auctionSpots: 3, minBid: 5, ...settings }, teams, players);
-  return { ...base, phase: "auction", picks, bids: [], myTeamId, isCommissioner: false, connectedTeamIds: [] };
+  return { ...base, phase: "auction", picks, bids: [], myTeamId, isCommissioner: false, connectedTeamIds: [], myQueue: [] };
 }
 
 describe("teamSummaries", () => {

@@ -17,6 +17,7 @@ const schemas = {
   nominate: z.object({ playerId: z.string() }),
   "bid:submit": z.object({ lotId: z.string(), amount: z.number().int() }),
   "bid:pass": z.object({ lotId: z.string() }),
+  "queue:update": z.object({ playerIds: z.array(z.string()).max(500) }),
   "tie:rebid": z.object({ lotId: z.string(), amount: z.number().int() }),
   "pick:make": z.object({ playerId: z.string() }),
   "admin:start": z.object({}),
@@ -37,7 +38,7 @@ const schemas = {
   "admin:markPlayerUnavailable": z.object({ playerId: z.string() }),
 } as const;
 
-const TEAM_SCOPED_EVENTS = new Set(["nominate", "bid:submit", "bid:pass", "tie:rebid", "pick:make"]);
+const TEAM_SCOPED_EVENTS = new Set(["nominate", "bid:submit", "bid:pass", "tie:rebid", "pick:make", "queue:update"]);
 const ADMIN_EVENTS = new Set([
   "admin:start",
   "admin:pause",

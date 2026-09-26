@@ -16,3 +16,5 @@ export * from "./selectors/eligibility.js";
 export * from "./selectors/lots.js";
 export * from "./selectors/order.js";
 export { revealedBidIds } from "./selectors/secrecy.js";
+export * from "./selectors/queue.js";
+export { MAX_QUEUE_LENGTH } from "./rules/queue.js";

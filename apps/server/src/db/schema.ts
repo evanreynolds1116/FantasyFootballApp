@@ -124,6 +124,21 @@ export const team = pgTable(
   ],
 );
 
+/**
+ * Each manager's ranked queue (FR-19), one row per team. Lives outside the
+ * draft so it can be built in the lobby before a draft exists; once the
+ * draft runs, it's loaded into the engine state and every change is written
+ * back here by the same single-statement save as the rest of the draft.
+ * Private to that team's manager.
+ */
+export const teamQueue = pgTable("team_queue", {
+  teamId: uuid("team_id")
+    .primaryKey()
+    .references(() => team.id, { onDelete: "cascade" }),
+  playerIds: jsonb("player_ids").notNull().default(sql`'[]'::jsonb`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const player = pgTable(
   "player",
   {

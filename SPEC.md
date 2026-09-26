@@ -132,7 +132,7 @@ Final rosters, spend per team and a full pick/bid log, exportable as CSV, a shar
 | FR-16 | Reconnect and resume: a refreshed or reconnected client restores full state in < 2 s | Must |
 | FR-17 | Audit log of every nomination, bid (amount + server timestamp), reveal, tie round, pick and commissioner action | Must |
 | FR-18 | Export results as CSV; shareable read-only results page | Should |
-| FR-19 | Watchlist and snake queue per manager; auto-pick uses queue first | Should |
+| FR-19 | One ranked queue per manager, built in the lobby or during the draft and private to them; auto-nominate and auto-pick use its top available player first (auto-pick: the first who fits the roster) | Should |
 | FR-20 | Sounds/vibration for "you're on the clock", 10-second warning, reveal | Should |
 | FR-21 | Big-board spectator mode for a TV | Must |
 | FR-22 | Configurable position groups with min/max (your league: QB 2, RB 4–5, WR/TE 6–7, K 2, DEF 2), enforced on bids, picks and auto-picks; a team can't take a player that leaves its remaining minimums unfillable | Must |
@@ -212,6 +212,7 @@ Budgets and roster counts are derived from awards and picks rather than stored a
 | `lot` | id, draft_id, round, order_in_round, player_id, nominated_by_team_id, state, tie_round, ends_at, remaining_ms, winner_team_id, price | One nominated player up for bid |
 | `bid` | id, lot_id, team_id, tie_round, amount, received_at, superseded | Latest non-superseded row per team per tie_round counts |
 | `pick` | id, draft_id, pick_no, round, team_id, player_id, source (auction/snake/makeup/auto), price, made_at | Auction awards also write a pick for one unified roster view |
+| `team_queue` | team_id, player_ids (ordered json array), updated_at | One ranked queue per team; taken players stay in the list but are skipped. Never sent to anyone but the team's manager |
 | `audit_event` | id, draft_id, seq, actor_user_id, type, payload_json, created_at | Append-only; powers undo, replay and disputes |
 
 **Derived values:** remaining budget = budget − sum(auction prices); auction spots left; max bid = remaining budget (no forced reserve); broke = remaining budget below the minimum bid and auction spots left > 0.
@@ -277,7 +278,7 @@ Every server message carries the draft `version` so a client that misses a messa
 | `bid:submit` | lotId, amount | Eligible team |
 | `bid:pass` | lotId | Eligible team (opening round only) |
 | `pick:make` | playerId | Team on the clock |
-| `queue:update` | playerIds[] | Any manager |
+| `queue:update` | playerIds[] (the whole ranked list, max 200) | Any manager, own team only; allowed while paused. Before the draft starts, `PUT /leagues/:id/queue` does the same |
 | `admin:start` / `admin:pause` / `admin:resume` | — | Commissioner |
 | `admin:break` | minutes | Commissioner |
 | `admin:undo` | — | Commissioner |
@@ -306,7 +307,7 @@ Every intent gets an acknowledgement: `ok` or an error code (`BID_TOO_LOW`, `OVE
 | `pick:made` | teamId, player, source | |
 | `draft:paused` / `draft:resumed` | remainingMs, breakEndsAt / endsAt | |
 | `settings:clocks` | new clock lengths | Mid-draft change |
-| `you:private` | your own current bid, queue | Only to that manager |
+| `you:private` | your own current bid, queue | Only to that manager's sockets. Snapshots carry `myQueue` for the viewer only; room-wide snapshots carry no queue |
 
 ## Screens
 
@@ -314,7 +315,7 @@ Every intent gets an acknowledgement: `ok` or an error code (`BID_TOO_LOW`, `OVE
 | --- | --- | --- |
 | League setup | Commissioner | Settings form with defaults pre-filled, rule summary preview |
 | Lobby | Everyone | Teams joined / ready, draft order, invite link, start button (commissioner) |
-| Nominate | Team on the clock | Player search + filters, watchlist, nomination clock; others see "Team 4 is nominating…" |
+| Nominate | Team on the clock | Player search + filters, your queue (★), nomination clock; others see "Team 4 is nominating…" |
 | Round queue | Everyone | This round's nominated players in bidding order, which lot is live |
 | Bid | Eligible managers | Player card, countdown ring, your budget / max bid / spots left, number pad, Submit / Pass / Change, "8 of 12 are in" strip; disabled with reason if not eligible |
 | Reveal | Everyone | Winner and configured runner-up bids flip together, high to low, winner banner; tie prompt for tied teams |
@@ -330,7 +331,7 @@ Each case needs a unit test in the rules engine.
 
 | Situation | Behavior |
 | --- | --- |
-| Nominator's clock runs out | Auto-nominate top of their watchlist, else highest-ranked available; or skip (setting) |
+| Nominator's clock runs out | Auto-nominate the top available player in their queue, else highest-ranked available; or skip (setting) |
 | Team fills its auction spots mid-round | Excluded from bidding on remaining lots and from future nominations; its already-queued nominee still runs |
 | Team can't afford the minimum bid before filling auction spots | Marked broke; skips nominations and bids; gets make-up picks at the end of the snake |
 | Winning bid leaves a team below the minimum bid with spots left | Allowed (no reserve rule); team becomes broke |

@@ -36,7 +36,7 @@ async function emitSnapshot(socket: Socket, db: Db, runtime: EngineRuntime, pres
   const socketData = socket.data as SocketData;
   socketData.teamId = myTeamId;
   socketData.isCommissioner = commissioner;
-  socket.emit("state:snapshot", { ...toPublicSnapshot(state), myTeamId, isCommissioner: commissioner, connectedTeamIds });
+  socket.emit("state:snapshot", { ...toPublicSnapshot(state, myTeamId), myTeamId, isCommissioner: commissioner, connectedTeamIds });
 }
 
 export function registerSocketServer(httpServer: HttpServer, db: Db, runtime: EngineRuntime): Server {

@@ -22,6 +22,17 @@ export function broadcastEvents(io: Server, draftId: string, state: DraftState, 
     switch (event.type) {
       case "draft:rejected":
         continue;
+      case "queue:updated": {
+        // Private: only the sockets of the manager who owns the team (every open tab), never the room.
+        const { teamId, playerIds } = event;
+        void io
+          .in(room)
+          .fetchSockets()
+          .then((sockets) => {
+            for (const s of sockets) if ((s.data as { teamId?: string | null }).teamId === teamId) s.emit("you:private", { queue: playerIds, ...envelope });
+          });
+        continue;
+      }
       case "draft:undo":
         io.to(room).emit("state:snapshot", { ...toPublicSnapshot(state), ...envelope });
         continue;

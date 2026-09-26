@@ -18,9 +18,11 @@ export type PublicBid = {
   amount?: number;
 };
 
-/** The snapshot sent as `state:snapshot` — DraftState with bids scrubbed for secrecy, plus the viewer's own team. */
-export type DraftSnapshot = Omit<DraftState, "bids"> & {
+/** The snapshot sent as `state:snapshot` — DraftState with bids scrubbed for secrecy and other teams' queues removed, plus the viewer's own team. */
+export type DraftSnapshot = Omit<DraftState, "bids" | "queues"> & {
   bids: PublicBid[];
+  /** The viewer's own ranked queue (FR-19). Never anyone else's. */
+  myQueue: string[];
   /** null for a spectator, or a manager who owns no team in this league. */
   myTeamId: string | null;
   /** Whether this viewer is the league commissioner — only decides whether to offer the console; the server re-checks every admin intent. */

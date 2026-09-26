@@ -145,5 +145,13 @@ export type DraftState = {
   /** Players marked unavailable by the commissioner (admin:markPlayerUnavailable). */
   unavailablePlayerIds: PlayerId[];
 
+  /**
+   * Each manager's ranked queue (FR-19), best first. Private: only that
+   * manager may ever see it. Auto-nominate and auto-pick take the first
+   * player in it that's available (and, for picks, fits the roster). May
+   * hold players who have since been taken — they're skipped, not removed.
+   */
+  queues: Record<TeamId, PlayerId[]>;
+
   lastAwardOrPick: { kind: "award" | "pick"; lotId?: LotId; pickId: string } | null;
 };
