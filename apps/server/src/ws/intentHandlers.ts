@@ -1,4 +1,4 @@
-import type { Action, Ctx, ErrorCode } from "@draft-app/engine";
+import { CLOCK_RANGES_SEC, type Action, type ClockName, type Ctx, type ErrorCode } from "@draft-app/engine";
 import type { Socket } from "socket.io";
 import { z } from "zod";
 import type { EngineRuntime } from "../engine/engineRuntime.js";
@@ -7,7 +7,11 @@ import type { SocketData } from "./types.js";
 
 type Ack = ((response: { ok: true } | { ok: false; code: ErrorCode | "FORBIDDEN" | "NOT_JOINED" | "INVALID_PAYLOAD" | "SERVER_ERROR"; message: string }) => void) | undefined;
 
-const clockSettingSchema = z.union([z.number().int().positive(), z.literal("off")]);
+/** A clock length within SPEC.md's allowed range for that clock, or "off". */
+function clockSettingSchema(clock: ClockName) {
+  const { min, max } = CLOCK_RANGES_SEC[clock];
+  return z.union([z.number().int().min(min).max(max), z.literal("off")]);
+}
 
 const schemas = {
   nominate: z.object({ playerId: z.string() }),
@@ -21,10 +25,10 @@ const schemas = {
   "admin:undo": z.object({}),
   "admin:addTime": z.object({ seconds: z.number().int().positive() }),
   "admin:setClocks": z.object({
-    nomination: clockSettingSchema.optional(),
-    bid: clockSettingSchema.optional(),
-    tie: clockSettingSchema.optional(),
-    pick: clockSettingSchema.optional(),
+    nomination: clockSettingSchema("nomination").optional(),
+    bid: clockSettingSchema("bid").optional(),
+    tie: clockSettingSchema("tie").optional(),
+    pick: clockSettingSchema("pick").optional(),
   }),
   "admin:setRevealTopN": z.object({ revealTopN: z.union([z.number().int().positive(), z.literal("all")]) }),
   "admin:resolveTie": z.object({ lotId: z.string(), teamId: z.string() }),

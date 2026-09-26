@@ -1,6 +1,7 @@
 # Progress notes — read this first when picking the project back up
 
-Last updated 2026-09-26, end of a session that built most of phase 3's core UI.
+Last updated 2026-09-26, after the session that built the Commissioner console
+and fixed undo to match SPEC.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -8,16 +9,17 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-177 tests, full 12-team scripted draft acceptance test. Committed.
+179 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 23) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
-**Phase 3 — UI (`apps/web`)**: in progress. Six of the ~9 draft-day screens
-are built and manually verified against a live server. Committed (`597aa7a`).
+**Phase 3 — UI (`apps/web`)**: in progress. Seven of the ~9 draft-day screens
+are built and manually verified against a live server. Committed (`597aa7a`,
+plus the Commissioner console commit).
 
 ## What's actually built and working in apps/web
 
@@ -56,6 +58,16 @@ are built and manually verified against a live server. Committed (`597aa7a`).
   grid, `SnakeBoardGrid.tsx`, is reused by the big board too), position-limit
   greying with the actual reason.
 
+- **Commissioner console** (`components/commish/`, route
+  `/draft/:draftId/commish`, linked from the draft header for the
+  commissioner only) — status line, Start (stopgap until the Lobby exists),
+  Pause/Resume, +15 s, timed breaks, clock-length steppers (5 s steps, clamped
+  to SPEC's ranges, debounced into one `admin:setClocks`), Undo naming exactly
+  what it undoes with a confirm step, a tie-fallback panel for "commissioner
+  decides", and who's connected. Verified in headless Chrome against a live
+  server. Pure text helpers are unit-tested (`consoleText.test.ts` — the first
+  `apps/web` tests; `pnpm test` now runs them).
+
 Every screen reuses `@draft-app/engine`'s own selectors (`remainingBudget`,
 `canBidOnPlayer`, `wouldExceedPositionMax`, `positionGroupCount`,
 `nominationOrderForRound`, etc. — see `store/selectors.ts`'s `asEngineState`
@@ -73,6 +85,26 @@ These weren't scope creep — the UI genuinely couldn't work without them:
 - `packages/engine/src/selectors/order.ts` (snake nomination-order direction)
   added to the engine's public export barrel — needed so the UI can compute
   "nominated 1 → 12" and "who's up next" without reimplementing that logic.
+
+Commissioner-console session:
+- **Presence** (`apps/server/src/ws/presence.ts`): in-memory count of joined
+  sockets per user per draft; broadcasts `presence:update { connectedTeamIds }`
+  on join/leave. Not draft state — never persisted, no version bump, and the
+  client applies it directly instead of resyncing.
+- Per-socket snapshot now also carries `isCommissioner` and
+  `connectedTeamIds` (alongside `myTeamId`).
+- `CLOCK_RANGES_SEC` (`packages/engine/src/settings/ranges.ts`) holds SPEC's
+  clock ranges; the server's `admin:setClocks` schema rejects anything outside
+  them. League creation doesn't validate them yet.
+- **Undo now follows SPEC** (it used to reopen the undone lot, which broke the
+  DB's one-open-lot rule whenever the next lot was already open — the undo
+  failed with a server error). An undone award's lot is now
+  `returnedToPool`, the player is back in the pool, the budget/spot come back,
+  the draft pauses (freezing whatever clock was live), and the live lot's
+  eligibility is refreshed so the ex-winner can bid on it again. The undo-only
+  `paused` lot state is no longer produced (still in the type/DB enum).
+- `restart-recovery.test.ts` now only checks its own draft's recovery — it
+  was failing because leftover dev-DB drafts also got "recovered".
 
 ## Known, intentional gaps (not bugs — flagged as they came up)
 
@@ -102,25 +134,29 @@ These weren't scope creep — the UI genuinely couldn't work without them:
   reveals bid amounts back to anyone before a lot resolves, not even the
   bidder, so "Your bid is in" shows `•••` instead of a remembered number after
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
-- **No automated frontend tests.** Everything was manually verified live
-  against a running server (see below) — Vitest/Playwright coverage for
-  `apps/web` doesn't exist yet.
+- **Almost no automated frontend tests.** Only the console's text helpers
+  are unit-tested; screens are verified by hand. No Playwright suite yet.
+- **Undo doesn't roll back a phase change.** Undoing the award that ended the
+  auction leaves the draft in the snake. SPEC is silent; not handled.
+- **Undoing a snake pick doesn't pause** and doesn't give the team its turn
+  back — unchanged from phase 1; SPEC only spells out the award case.
+- **Console gaps vs SPEC:** no edit budget/roster (no server intent, and how
+  an edit is recorded is a rules decision to ask about), no void lot / mark
+  player unavailable buttons (server intents exist), no 10-second "back in"
+  countdown after a break (engine doesn't do it).
 
 ## What's left
 
 In the order SPEC.md's screen table lists them, minus what's done:
-1. **Commissioner console** — next up, explicitly deferred to tomorrow by the
-   user. Pause/resume, timed break, clock-length steppers, undo, connection
-   status per team. Nothing here should need new server work — phase 2 already
-   has `admin:pause/resume/break/addTime/setClocks/undo` intents wired.
-2. **Rosters & budgets** — SPEC lists this as its own "everyone" screen
+1. **Rosters & budgets** — next up — SPEC lists this as its own "everyone" screen
    (per-team roster by position, money left, max bid, spots left, broke flag).
    Right now this info only exists embedded in Bid's laptop panels and the big
    board — no standalone view.
-3. **League setup + Lobby** — the pre-draft flow. Bigger than the rest
+2. **League setup + Lobby** — the pre-draft flow. Bigger than the rest
    combined: settings form, invite link, team join/claim, draft order
    assignment, start button. Needed before this app is usable without me
    scripting the setup by hand.
+3. The console gaps listed above.
 4. Real auth, watchlist/queue, CSV export, settings-editing after creation —
    all previously deferred to phase 3/4, still deferred.
 
@@ -132,7 +168,11 @@ In the order SPEC.md's screen table lists them, minus what's done:
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of this commit (`597aa7a`).
+  packages as of the Commissioner console commit.
+- Headless browser checks: Chrome is installed; `playwright-core` with
+  `channel: "chrome"` works (install it in a scratch dir, not the repo).
+- There's still no claim-team route, so demo drafts need a direct
+  `update team set user_id = ...` after `POST /leagues`.
 - The Supabase dev DB from this session still has several leftover test
   leagues/drafts in it (named things like "Snake Demo League", "Nominate Demo
   League") — harmless, but worth a scoped cleanup pass (by league name, never

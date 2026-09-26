@@ -1,5 +1,5 @@
 import { currentLot } from "@draft-app/engine";
-import { Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { BidScreen } from "../components/bid/BidScreen";
 import { NominateScreen } from "../components/nominate/NominateScreen";
 import { ConnectionBadge } from "../components/primitives/ConnectionBadge";
@@ -11,7 +11,7 @@ import { useAuth } from "../lib/auth";
 import { asEngineState } from "../store/selectors";
 import { DraftProvider, useDraft } from "../store/DraftProvider";
 
-function DraftScreenRouter() {
+function DraftScreenRouter({ draftId }: { draftId: string }) {
   const { snapshot, status, reveal } = useDraft();
   const lot = snapshot ? currentLot(asEngineState(snapshot)) : undefined;
 
@@ -19,7 +19,14 @@ function DraftScreenRouter() {
     <div className="flex h-screen flex-col bg-bg text-text">
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <span className="font-display text-lg font-bold uppercase">Draft Day</span>
-        <ConnectionBadge status={status} />
+        <span className="flex items-center gap-4">
+          {snapshot?.isCommissioner && (
+            <Link to={`/draft/${draftId}/commish`} className="text-sm font-semibold text-accent">
+              Commissioner
+            </Link>
+          )}
+          <ConnectionBadge status={status} />
+        </span>
       </div>
       {snapshot && <PausedBanner paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt} />}
       <div className="flex flex-grow flex-col px-4 md:px-8">
@@ -55,7 +62,7 @@ export function DraftRoute() {
 
   return (
     <DraftProvider token={session.token} draftId={draftId}>
-      <DraftScreenRouter />
+      <DraftScreenRouter draftId={draftId} />
     </DraftProvider>
   );
 }

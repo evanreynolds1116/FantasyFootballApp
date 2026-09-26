@@ -18,7 +18,11 @@ type DraftContextValue = {
 
 const DraftContext = createContext<DraftContextValue | null>(null);
 
-type RawSnapshot = Omit<DraftSnapshot, "myTeamId"> & { myTeamId?: string | null };
+type RawSnapshot = Omit<DraftSnapshot, "myTeamId" | "isCommissioner" | "connectedTeamIds"> & {
+  myTeamId?: string | null;
+  isCommissioner?: boolean;
+  connectedTeamIds?: string[];
+};
 type RawReveal = { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null };
 type RawTieRevealed = { lotId: string; tieRound: number; bids: RevealedBid[] };
 type RawAwarded = { lotId: string; teamId: string; playerId: string; price: number };
@@ -43,6 +47,8 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     let resyncScheduled = false;
     let hasConnectedBefore = false;
     let lastMyTeamId: string | null = null;
+    let lastIsCommissioner = false;
+    let lastConnectedTeamIds: string[] = [];
     let revealTimeout: ReturnType<typeof setTimeout> | null = null;
     // A tie's *final* round resolves via lot:tieRebidRevealed + lot:awarded
     // — never lot:reveal, which only fires for a lot's very first (untied)
@@ -69,12 +75,23 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
 
     const applySnapshot = (payload: unknown) => {
       const raw = payload as RawSnapshot;
-      // The room-wide broadcast on admin:undo can't cheaply compute a
-      // per-socket myTeamId, so it omits the field — team ownership never
-      // changes mid-draft, so carrying the last-known value forward is safe.
+      // The room-wide broadcast on admin:undo can't cheaply compute the
+      // per-socket fields, so it omits them — team ownership and the
+      // commissioner never change mid-draft, and presence has its own
+      // presence:update event, so carrying the last-known values forward is safe.
       const myTeamId = raw.myTeamId !== undefined ? raw.myTeamId : lastMyTeamId;
+      const isCommissioner = raw.isCommissioner ?? lastIsCommissioner;
+      const connectedTeamIds = raw.connectedTeamIds ?? lastConnectedTeamIds;
       lastMyTeamId = myTeamId;
-      setSnapshot({ ...raw, myTeamId } as DraftSnapshot);
+      lastIsCommissioner = isCommissioner;
+      lastConnectedTeamIds = connectedTeamIds;
+      setSnapshot({ ...raw, myTeamId, isCommissioner, connectedTeamIds } as DraftSnapshot);
+    };
+
+    const applyPresence = (payload: unknown) => {
+      const { connectedTeamIds } = payload as { connectedTeamIds: string[] };
+      lastConnectedTeamIds = connectedTeamIds;
+      setSnapshot((prev) => (prev ? { ...prev, connectedTeamIds } : prev));
     };
 
     const handleConnect = () => {
@@ -88,6 +105,12 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     const handleAny = (eventName: string, payload: unknown) => {
       if (eventName === "state:snapshot") {
         applySnapshot(payload);
+        return;
+      }
+      // Presence isn't draft state (no version bump), so it's applied as-is
+      // rather than triggering a resync like every other event.
+      if (eventName === "presence:update") {
+        applyPresence(payload);
         return;
       }
       if (eventName === "lot:reveal") {

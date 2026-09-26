@@ -5,9 +5,11 @@ import { applyNominate } from "../../src/rules/nomination.js";
 import { applyBidSubmit } from "../../src/rules/bidding.js";
 import { applyLotExpired } from "../../src/rules/reveal.js";
 import { applyAdminUndo } from "../../src/rules/undo.js";
-import { applyAdminResume } from "../../src/rules/pauseResume.js";
+import { applyAdminBreak, applyAdminResume } from "../../src/rules/pauseResume.js";
 import { beginSnake, applyPickMake } from "../../src/rules/snake.js";
 import type { DraftState } from "../../src/model/types.js";
+import { remainingBudget } from "../../src/selectors/budget.js";
+import { isPlayerAvailable } from "../../src/selectors/lots.js";
 
 describe("undo", () => {
   it("rejects when there is nothing to undo", () => {
@@ -18,7 +20,7 @@ describe("undo", () => {
     expect(res.events[0]).toMatchObject({ type: "draft:rejected", code: "NOTHING_TO_UNDO" });
   });
 
-  it("undoes an auction award: pick removed, lot reopened paused, player back in the pool", () => {
+  it("undoes an auction award per SPEC: pick removed, budget restored, player back in the pool, draft paused", () => {
     const players = makePlayerPool("QB", 5);
     let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
     const ctx = makeCtx(1000);
@@ -26,22 +28,92 @@ describe("undo", () => {
     let i = 0;
     state = nominateFullRound(state, ctx, () => players[i++]!.id, applyNominate);
     const lot = state.lots[0]!;
+    const budgetBefore = remainingBudget(state, "t1");
     state = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lot.id, amount: 50 }, ctx).state;
     state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
     expect(state.picks.some((p) => p.playerId === lot.playerId)).toBe(true);
+    expect(remainingBudget(state, "t1")).toBe(budgetBefore - 50);
 
     const res = applyAdminUndo(state, { type: "admin:undo" }, ctx);
     expect(res.events).toContainEqual({ type: "draft:undo", undone: { kind: "award", teamId: "t1", playerId: lot.playerId } });
     expect(res.state.picks.some((p) => p.playerId === lot.playerId)).toBe(false);
-    const reopenedLot = res.state.lots.find((l) => l.id === lot.id)!;
-    expect(reopenedLot.state).toBe("paused");
-    expect(reopenedLot.winnerTeamId).toBeNull();
-    expect(reopenedLot.price).toBeNull();
+    expect(remainingBudget(res.state, "t1")).toBe(budgetBefore);
+    const undoneLot = res.state.lots.find((l) => l.id === lot.id)!;
+    expect(undoneLot.state).toBe("returnedToPool");
+    expect(undoneLot.winnerTeamId).toBeNull();
+    expect(undoneLot.price).toBeNull();
+    expect(isPlayerAvailable(res.state, lot.playerId)).toBe(true);
+    expect(res.state.paused).toBe(true);
     expect(res.state.lastAwardOrPick).toBeNull();
+  });
 
-    // The lot is only live again once the commissioner explicitly resumes.
-    const resumed = applyAdminResume(res.state, { type: "admin:resume" }, ctx);
-    expect(resumed.state.lots.find((l) => l.id === lot.id)?.state).toBe("open");
+  it("undoing an award after the next lot opened pauses that lot and never reopens the undone one", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17, bidClockSec: 60 } });
+    state = applyAdminStart(state, { type: "admin:start" }, makeCtx(1000)).state;
+    let i = 0;
+    state = nominateFullRound(state, makeCtx(1000), () => players[i++]!.id, applyNominate);
+    const [lotA, lotB] = state.lots;
+    state = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lotA!.id, amount: 50 }, makeCtx(1000)).state;
+    state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lotA!.id }, makeCtx(2000)).state;
+    const liveB = state.lots.find((l) => l.id === lotB!.id)!;
+    expect(liveB.state).toBe("open");
+    const endsAt = liveB.endsAt!;
+
+    const res = applyAdminUndo(state, { type: "admin:undo" }, makeCtx(12_000));
+    // SPEC key constraint: one open lot per draft at a time.
+    const liveLots = res.state.lots.filter((l) => l.state === "open" || l.state === "tieRebid" || l.state === "paused");
+    expect(liveLots.map((l) => l.id)).toEqual([lotB!.id]);
+    const frozenB = res.state.lots.find((l) => l.id === lotB!.id)!;
+    expect(frozenB.endsAt).toBeNull();
+    expect(frozenB.remainingMs).toBe(endsAt - 12_000);
+    expect(res.state.paused).toBe(true);
+    expect(res.events.map((e) => e.type)).toEqual(["draft:paused", "draft:undo"]);
+
+    // Resume picks lot B back up with the time it had left.
+    const resumed = applyAdminResume(res.state, { type: "admin:resume" }, makeCtx(50_000)).state;
+    const resumedB = resumed.lots.find((l) => l.id === lotB!.id)!;
+    expect(resumedB.state).toBe("open");
+    expect(resumedB.endsAt).toBe(50_000 + (endsAt - 12_000));
+    expect(resumed.lots.find((l) => l.id === lotA!.id)?.state).toBe("returnedToPool");
+  });
+
+  it("a winner the award had filled up becomes eligible again for the live lot after undo", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 1, rosterSize: 17, positionGroups: null } });
+    const ctx = makeCtx(1000);
+    state = applyAdminStart(state, { type: "admin:start" }, ctx).state;
+    let i = 0;
+    state = nominateFullRound(state, ctx, () => players[i++]!.id, applyNominate);
+    const [lotA, lotB] = state.lots;
+    state = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lotA!.id, amount: 50 }, ctx).state;
+    state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lotA!.id }, ctx).state;
+    expect(state.lots.find((l) => l.id === lotB!.id)!.eligibleTeamIds).not.toContain("t1");
+
+    state = applyAdminUndo(state, { type: "admin:undo" }, ctx).state;
+    expect(state.lots.find((l) => l.id === lotB!.id)!.eligibleTeamIds).toContain("t1");
+    state = applyAdminResume(state, { type: "admin:resume" }, ctx).state;
+    const res = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lotB!.id, amount: 20 }, ctx);
+    expect(res.events[0]).not.toMatchObject({ type: "draft:rejected" });
+  });
+
+  it("undo during a timed break leaves the break and the frozen clock exactly as they were", () => {
+    const players = makePlayerPool("QB", 5);
+    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
+    const ctx = makeCtx(1000);
+    state = applyAdminStart(state, { type: "admin:start" }, ctx).state;
+    let i = 0;
+    state = nominateFullRound(state, ctx, () => players[i++]!.id, applyNominate);
+    const lotA = state.lots[0]!;
+    state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lotA.id }, ctx).state;
+    state = applyAdminBreak(state, { type: "admin:break", minutes: 10 }, makeCtx(2000)).state;
+    const frozenBefore = state.lots[1]!.remainingMs;
+
+    const res = applyAdminUndo(state, { type: "admin:undo" }, makeCtx(90_000));
+    expect(res.state.paused).toBe(true);
+    expect(res.state.breakEndsAt).toBe(2000 + 10 * 60_000);
+    expect(res.state.lots[1]!.remainingMs).toBe(frozenBefore);
+    expect(res.events.map((e) => e.type)).toEqual(["draft:undo"]);
   });
 
   it("undoes a snake pick: pick removed, no lot involved, player back in the pool", () => {
@@ -60,6 +132,7 @@ describe("undo", () => {
     expect(res.events).toContainEqual({ type: "draft:undo", undone: { kind: "pick", teamId: "t1", playerId: "qb1" } });
     expect(res.state.picks).toHaveLength(0);
     expect(res.state.lots).toHaveLength(0);
+    expect(res.state.paused).toBe(false);
   });
 
   it("undo only reverses the single most-recent pick; a second undo targets the prior one", () => {
@@ -81,22 +154,23 @@ describe("undo", () => {
     expect(res.state.picks.map((p) => p.playerId)).toEqual([]);
   });
 
-  it("after undo, the player is eligible for any team to re-nominate, not just the original winner", () => {
-    const players = makePlayerPool("QB", 5);
+  it("after undo, the player can be nominated again by any team, not just the original winner", () => {
+    const players = makePlayerPool("QB", 6);
     let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
     const ctx = makeCtx(1000);
     state = applyAdminStart(state, { type: "admin:start" }, ctx).state;
     let i = 0;
     state = nominateFullRound(state, ctx, () => players[i++]!.id, applyNominate);
-    const lot = state.lots[0]!;
-    state = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lot.id, amount: 50 }, ctx).state;
-    state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
+    const [lotA, lotB] = state.lots;
+    state = applyBidSubmit(state, { type: "bid:submit", teamId: "t1", lotId: lotA!.id, amount: 50 }, ctx).state;
+    state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lotA!.id }, ctx).state;
     state = applyAdminUndo(state, { type: "admin:undo" }, ctx).state;
     state = applyAdminResume(state, { type: "admin:resume" }, ctx).state;
+    state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lotB!.id }, ctx).state;
 
-    const reopenedLot = state.lots.find((l) => l.id === lot.id)!;
-    expect(reopenedLot.eligibleTeamIds).toContain("t2");
-    const res = applyBidSubmit(state, { type: "bid:submit", teamId: "t2", lotId: lot.id, amount: 20 }, ctx);
+    // Round 2 nominations: whoever is up can nominate the undone player.
+    expect(state.nominationTurnTeamId).not.toBeNull();
+    const res = applyNominate(state, { type: "nominate", teamId: state.nominationTurnTeamId!, playerId: lotA!.playerId }, ctx);
     expect(res.events[0]).not.toMatchObject({ type: "draft:rejected" });
   });
 
@@ -124,7 +198,7 @@ describe("undo", () => {
     expect(res.events[0]).toMatchObject({ type: "draft:rejected", code: "NOTHING_TO_UNDO" });
   });
 
-  it("undoing twice in a row where both the most-recent and prior picks are auction awards reopens each lot correctly", () => {
+  it("undoing twice in a row where both the most-recent and prior picks are auction awards returns both players to the pool", () => {
     const players = makePlayerPool("QB", 5);
     let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17 } });
     const ctx = makeCtx(1000);
@@ -137,24 +211,13 @@ describe("undo", () => {
     expect(state.picks).toHaveLength(2);
 
     state = applyAdminUndo(state, { type: "admin:undo" }, ctx).state;
-    expect(state.lots.find((l) => l.id === lotB!.id)?.state).toBe("paused");
+    expect(state.lots.find((l) => l.id === lotB!.id)?.state).toBe("returnedToPool");
     expect(state.lots.find((l) => l.id === lotA!.id)?.state).toBe("awarded");
 
     const res = applyAdminUndo(state, { type: "admin:undo" }, ctx);
-    expect(res.state.lots.find((l) => l.id === lotA!.id)?.state).toBe("paused");
+    expect(res.state.lots.find((l) => l.id === lotA!.id)?.state).toBe("returnedToPool");
     expect(res.state.picks).toHaveLength(0);
-  });
-
-  it("reopens the lot with a null remainingMs when the bid clock is off", () => {
-    const players = makePlayerPool("QB", 5);
-    let state: DraftState = makeState({ teamCount: 2, players, settings: { auctionSpots: 8, rosterSize: 17, bidClockSec: "off" } });
-    const ctx = makeCtx(1000);
-    state = applyAdminStart(state, { type: "admin:start" }, ctx).state;
-    let i = 0;
-    state = nominateFullRound(state, ctx, () => players[i++]!.id, applyNominate);
-    const lot = state.lots[0]!;
-    state = applyLotExpired(state, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
-    const res = applyAdminUndo(state, { type: "admin:undo" }, ctx);
-    expect(res.state.lots.find((l) => l.id === lot.id)?.remainingMs).toBeNull();
+    expect(isPlayerAvailable(res.state, lotA!.playerId)).toBe(true);
+    expect(isPlayerAvailable(res.state, lotB!.playerId)).toBe(true);
   });
 });

@@ -9,9 +9,13 @@ export class ForbiddenError extends Error {
   }
 }
 
-export async function assertCommissioner(db: Db, userId: string, leagueId: string): Promise<void> {
+export async function isCommissioner(db: Db, userId: string, leagueId: string): Promise<boolean> {
   const [row] = await db.select({ id: league.id }).from(league).where(and(eq(league.id, leagueId), eq(league.commissionerUserId, userId))).limit(1);
-  if (!row) throw new ForbiddenError("Only the league commissioner can do this.");
+  return row !== undefined;
+}
+
+export async function assertCommissioner(db: Db, userId: string, leagueId: string): Promise<void> {
+  if (!(await isCommissioner(db, userId, leagueId))) throw new ForbiddenError("Only the league commissioner can do this.");
 }
 
 /** Returns the teamId this user owns within the given league, or null if none. Never trust a client-supplied teamId. */

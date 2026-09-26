@@ -1,5 +1,6 @@
 export * from "./settings/types.js";
 export { DEFAULT_SETTINGS } from "./settings/defaults.js";
+export { CLOCK_RANGES_SEC, type ClockName } from "./settings/ranges.js";
 export * from "./model/types.js";
 export { createInitialState } from "./model/state.js";
 export * from "./actions/types.js";

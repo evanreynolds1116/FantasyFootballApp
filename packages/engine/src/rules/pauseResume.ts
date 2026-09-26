@@ -3,12 +3,11 @@ import type { Ctx } from "../clock.js";
 import { bumpVersion } from "../model/state.js";
 import type { DraftState } from "../model/types.js";
 import { currentLot } from "../selectors/lots.js";
-import { eligibleTeamIdsForPlayer } from "../selectors/eligibility.js";
 import type { Event } from "../events/types.js";
 import { ok, type ReduceResult } from "./result.js";
 
 /** Freezes whichever single clock is currently running, storing its remainingMs. Returns the remaining ms captured, if any. */
-function freezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; remainingMs: number | null } {
+export function freezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; remainingMs: number | null } {
   const lot = currentLot(state);
   if (lot && (lot.state === "open" || lot.state === "tieRebid") && lot.endsAt !== null) {
     const remainingMs = lot.endsAt - ctx.now;
@@ -29,20 +28,9 @@ function freezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; r
 /** Restores whichever clock was frozen, computing a fresh endsAt from now + remainingMs. Returns the restored endsAt, if any. */
 function unfreezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; endsAt: number | null } {
   const lot = currentLot(state);
-  if (lot && (lot.state === "open" || lot.state === "tieRebid" || lot.state === "paused") && lot.remainingMs !== null) {
+  if (lot && (lot.state === "open" || lot.state === "tieRebid") && lot.remainingMs !== null) {
     const endsAt = ctx.now + lot.remainingMs;
-    // A lot reopened by admin:undo sits in "paused" state (see undo.ts) and
-    // resumes into live bidding, same as a lot frozen mid-bid by admin:pause.
-    // Its eligibility snapshot is refreshed since the undo may have restored
-    // budget/roster room for teams that weren't eligible before.
-    const wasUndoReopen = lot.state === "paused";
-    const updatedLot = {
-      ...lot,
-      state: wasUndoReopen ? ("open" as const) : lot.state,
-      eligibleTeamIds: wasUndoReopen ? eligibleTeamIdsForPlayer(state, lot.playerId) : lot.eligibleTeamIds,
-      endsAt,
-      remainingMs: null,
-    };
+    const updatedLot = { ...lot, endsAt, remainingMs: null };
     return { state: { ...state, lots: state.lots.map((l) => (l.id === lot.id ? updatedLot : l)) }, endsAt };
   }
   if (state.nominationRemainingMs !== null) {

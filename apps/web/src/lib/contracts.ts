@@ -23,6 +23,10 @@ export type DraftSnapshot = Omit<DraftState, "bids"> & {
   bids: PublicBid[];
   /** null for a spectator, or a manager who owns no team in this league. */
   myTeamId: string | null;
+  /** Whether this viewer is the league commissioner — only decides whether to offer the console; the server re-checks every admin intent. */
+  isCommissioner: boolean;
+  /** Teams whose manager currently has the draft open. Live connection state, not draft state — kept current by `presence:update`. */
+  connectedTeamIds: string[];
 };
 
 export type AckErrorCode = ErrorCode | "FORBIDDEN" | "NOT_JOINED" | "INVALID_PAYLOAD" | "SERVER_ERROR";

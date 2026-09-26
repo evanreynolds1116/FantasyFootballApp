@@ -109,7 +109,9 @@ describe("restart mid-lot loses nothing (phase 2 acceptance test)", () => {
         const address2 = server2.server.address();
         const baseUrl2 = `http://127.0.0.1:${typeof address2 === "object" && address2 ? address2.port : 0}`;
 
-        const recovered = await server2.engineRuntime.bootstrapScheduler();
+        // Scoped to this test's draft: bootstrapScheduler recovers every live
+        // draft in the (shared dev) database, including leftovers from other runs.
+        const recovered = (await server2.engineRuntime.bootstrapScheduler()).filter((r) => r.draftId === draftId);
         expect(recovered).toHaveLength(0); // restarted well before the 3s clock passed — no downtime recovery needed
 
         const postRestartState = (await (
@@ -205,7 +207,7 @@ describe("restart mid-lot loses nothing (phase 2 acceptance test)", () => {
         server2 = await buildServer({ logger: false });
         await server2.listen({ port: 0, host: "127.0.0.1" });
 
-        const recovered = await server2.engineRuntime.bootstrapScheduler();
+        const recovered = (await server2.engineRuntime.bootstrapScheduler()).filter((r) => r.draftId === draftId);
         expect(recovered).toHaveLength(1);
         expect(recovered[0]).toMatchObject({ draftId, kind: "lot" });
         expect(recovered[0]!.newEndsAt).toBeGreaterThan(Date.now());
