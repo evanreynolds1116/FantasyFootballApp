@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { createDraft } from "../../db/createDraft.js";
 import { auditEvent, draft } from "../../db/schema.js";
-import { getOrHydrate } from "../../engine/activeDraftRegistry.js";
 import { toPublicSnapshot } from "../../shared/publicSnapshot.js";
 import { requireAuth } from "../auth.js";
 import { assertCommissioner } from "../authz.js";
@@ -22,7 +21,7 @@ export async function registerDraftRoutes(app: FastifyInstance): Promise<void> {
   // Read-only: any authenticated participant (including spectators) may view state.
   app.get("/drafts/:id/state", { preHandler: requireAuth }, async (request, reply) => {
     const { id: draftId } = request.params as { id: string };
-    const state = await getOrHydrate(request.server.db, draftId);
+    const state = await request.server.engineRuntime.getOrHydrate(draftId);
     return reply.send(toPublicSnapshot(state));
   });
 

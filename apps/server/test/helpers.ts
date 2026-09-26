@@ -1,0 +1,109 @@
+import type { AddressInfo } from "node:net";
+import { eq } from "drizzle-orm";
+import { io as ioClient, type Socket } from "socket.io-client";
+import { buildServer } from "../src/buildServer.js";
+import type { Db } from "../src/db/client.js";
+import { draft, team, user, league } from "../src/db/schema.js";
+
+export async function startTestServer() {
+  const app = await buildServer({ logger: false });
+  await app.listen({ port: 0, host: "127.0.0.1" });
+  const { port } = app.server.address() as AddressInfo;
+  const baseUrl = `http://127.0.0.1:${port}`;
+  return { app, baseUrl, port };
+}
+
+export async function createDevSession(baseUrl: string, displayName: string, email?: string) {
+  const res = await fetch(`${baseUrl}/dev/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ displayName, email }),
+  });
+  if (!res.ok) throw new Error(`dev/session failed: ${res.status}`);
+  return (await res.json()) as { token: string; userId: string };
+}
+
+export async function createLeague(
+  baseUrl: string,
+  token: string,
+  body: { name: string; settings?: Record<string, unknown>; teams: { name: string }[] },
+) {
+  const res = await fetch(`${baseUrl}/leagues`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`POST /leagues failed: ${res.status} ${await res.text()}`);
+  return (await res.json()) as { leagueId: string; teams: { id: string; draftNumber: number }[] };
+}
+
+export async function addPlayers(baseUrl: string, token: string, leagueId: string, players: { name: string; position: string }[]) {
+  const res = await fetch(`${baseUrl}/leagues/${leagueId}/players`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ players }),
+  });
+  if (!res.ok) throw new Error(`POST /leagues/:id/players failed: ${res.status} ${await res.text()}`);
+}
+
+export async function createDraftForLeague(baseUrl: string, token: string, leagueId: string) {
+  const res = await fetch(`${baseUrl}/leagues/${leagueId}/drafts`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`POST /leagues/:id/drafts failed: ${res.status} ${await res.text()}`);
+  return (await res.json()) as { draftId: string };
+}
+
+/** Dev-only test shortcut: directly assigns a team to a user, bypassing the (phase-3) invite/claim flow. */
+export async function claimTeam(app: Awaited<ReturnType<typeof buildServer>>, teamId: string, userId: string) {
+  await app.db.update(team).set({ userId }).where(eq(team.id, teamId));
+}
+
+export function connectSocket(baseUrl: string, token: string): Socket {
+  return ioClient(baseUrl, { auth: { token }, transports: ["websocket"], forceNew: true });
+}
+
+export function waitForConnect(socket: Socket): Promise<void> {
+  return new Promise((resolve, reject) => {
+    socket.once("connect", () => resolve());
+    socket.once("connect_error", (err) => reject(err));
+  });
+}
+
+export function joinDraft(socket: Socket, draftId: string): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    socket.emit("join", { draftId }, (ack: { ok: boolean; error?: string }) => {
+      if (ack.ok) resolve(ack);
+      else reject(new Error(ack.error));
+    });
+  });
+}
+
+export function emitIntent(socket: Socket, event: string, payload: unknown): Promise<{ ok: boolean; code?: string; message?: string }> {
+  return new Promise((resolve) => {
+    socket.emit(event, payload, (ack: { ok: boolean; code?: string; message?: string }) => resolve(ack));
+  });
+}
+
+export function waitForEvent<T = unknown>(socket: Socket, event: string): Promise<T> {
+  return new Promise((resolve) => {
+    socket.once(event, (payload: T) => resolve(payload));
+  });
+}
+
+/**
+ * team/lot/bid/pick have FK paths to both `league` (indirectly) and to each
+ * other; those cross-references are intentionally NOT cascading (deleting a
+ * team shouldn't silently wipe historical bid/pick audit rows in real
+ * operation), so tests must delete `draft` (which cleanly cascades
+ * lot/bid/pick/audit_event) before `league` (which cascades team/player/
+ * draft_settings) — the reverse order trips a FK violation.
+ */
+export async function cleanupLeague(db: Db, leagueId: string, userIds: string[]) {
+  await db.delete(draft).where(eq(draft.leagueId, leagueId));
+  await db.delete(league).where(eq(league.id, leagueId));
+  for (const userId of userIds) {
+    await db.delete(user).where(eq(user.id, userId));
+  }
+}

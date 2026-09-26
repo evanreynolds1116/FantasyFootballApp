@@ -123,9 +123,10 @@ export function bidFromRow(row: BidRow): Bid {
   };
 }
 
-export function bidToRow(bid: Bid): typeof schema.bid.$inferInsert {
+export function bidToRow(draftId: string, bid: Bid): typeof schema.bid.$inferInsert {
   return {
     id: bid.id,
+    draftId,
     lotId: bid.lotId,
     teamId: bid.teamId,
     tieRound: bid.tieRound,

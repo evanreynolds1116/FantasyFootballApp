@@ -1,11 +1,13 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -145,7 +147,7 @@ export const draft = pgTable("draft", {
     .references(() => league.id, { onDelete: "cascade" }),
   phase: draftPhaseEnum("phase").notNull().default("setup"),
   auctionRound: integer("auction_round").notNull().default(0),
-  currentLotId: uuid("current_lot_id"),
+  currentLotId: text("current_lot_id"),
   /** Denormalized convenience column, derivable as picks.length + 1; not authoritative. */
   currentPickNo: integer("current_pick_no"),
   paused: boolean("paused").notNull().default(false),
@@ -163,7 +165,10 @@ export const draft = pgTable("draft", {
 export const lot = pgTable(
   "lot",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    // Engine-minted id (e.g. "lot_1", via allocateId) — not globally unique on
+    // its own: the engine's id counter restarts at 1 per draft, so uniqueness
+    // is only guaranteed scoped to (draftId, id) — see the composite PK below.
+    id: text("id").notNull(),
     draftId: uuid("draft_id")
       .notNull()
       .references(() => draft.id, { onDelete: "cascade" }),
@@ -186,6 +191,7 @@ export const lot = pgTable(
     tiedTeamIds: jsonb("tied_team_ids").notNull().default(sql`'[]'::jsonb`),
   },
   (t) => [
+    primaryKey({ columns: [t.draftId, t.id] }),
     index("lot_draft_round_idx").on(t.draftId, t.round, t.orderInRound),
     // SPEC.md: "one open lot per draft at a time" — enforced at the DB level.
     uniqueIndex("lot_one_open_per_draft_idx")
@@ -197,10 +203,13 @@ export const lot = pgTable(
 export const bid = pgTable(
   "bid",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    lotId: uuid("lot_id")
+    // Engine-minted id (e.g. "bid_3") — see the lot table's comment on why
+    // this isn't globally unique on its own.
+    id: text("id").notNull(),
+    draftId: uuid("draft_id")
       .notNull()
-      .references(() => lot.id, { onDelete: "cascade" }),
+      .references(() => draft.id, { onDelete: "cascade" }),
+    lotId: text("lot_id").notNull(),
     teamId: uuid("team_id")
       .notNull()
       .references(() => team.id),
@@ -209,13 +218,19 @@ export const bid = pgTable(
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
     superseded: boolean("superseded").notNull().default(false),
   },
-  (t) => [index("bid_lot_tie_round_team_idx").on(t.lotId, t.tieRound, t.teamId, t.superseded)],
+  (t) => [
+    primaryKey({ columns: [t.draftId, t.id] }),
+    foreignKey({ columns: [t.draftId, t.lotId], foreignColumns: [lot.draftId, lot.id] }).onDelete("cascade"),
+    index("bid_lot_tie_round_team_idx").on(t.lotId, t.tieRound, t.teamId, t.superseded),
+  ],
 );
 
 export const pick = pgTable(
   "pick",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    // Engine-minted id (e.g. "pick_5") — see the lot table's comment on why
+    // this isn't globally unique on its own.
+    id: text("id").notNull(),
     draftId: uuid("draft_id")
       .notNull()
       .references(() => draft.id, { onDelete: "cascade" }),
@@ -232,6 +247,7 @@ export const pick = pgTable(
     madeAt: timestamp("made_at", { withTimezone: true }).notNull(),
   },
   (t) => [
+    primaryKey({ columns: [t.draftId, t.id] }),
     // SPEC.md: "a player appears in at most one pick per draft" (unique index).
     uniqueIndex("pick_draft_player_idx").on(t.draftId, t.playerId),
     uniqueIndex("pick_draft_pick_no_idx").on(t.draftId, t.pickNo),

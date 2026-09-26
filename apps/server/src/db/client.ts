@@ -11,7 +11,10 @@ function requireDatabaseUrl(): string {
 }
 
 export function createDb(databaseUrl: string = requireDatabaseUrl()) {
-  const client = postgres(databaseUrl, { max: 10 });
+  // Kept small deliberately: Supabase's session-mode pooler caps total
+  // concurrent connections (15 on the free tier), and multiple server
+  // instances (e.g. one per integration test file) each open their own pool.
+  const client = postgres(databaseUrl, { max: 3 });
   const db = drizzle(client, { schema });
   return { db, client };
 }

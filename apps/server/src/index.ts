@@ -1,5 +1,4 @@
 import { buildServer } from "./buildServer.js";
-import { bootstrapScheduler } from "./scheduler/timerScheduler.js";
 import { roomForDraft } from "./ws/broadcastEvents.js";
 
 async function main() {
@@ -7,7 +6,7 @@ async function main() {
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen({ port, host: "0.0.0.0" });
 
-  const recovered = await bootstrapScheduler(app.db);
+  const recovered = await app.engineRuntime.bootstrapScheduler();
   for (const r of recovered) {
     app.io.to(roomForDraft(r.draftId)).emit("draft:recovered", r);
     app.log.warn({ recovered: r }, "Draft clock extended after server downtime");

@@ -1,13 +1,11 @@
 import type { Action, Ctx, ErrorCode } from "@draft-app/engine";
-import type { Server, Socket } from "socket.io";
+import type { Socket } from "socket.io";
 import { z } from "zod";
-import type { Db } from "../db/client.js";
-import { assertCommissioner, findOwnedTeamId } from "../http/authz.js";
-import { applyAction } from "../engine/activeDraftRegistry.js";
-import { broadcastEvents } from "./broadcastEvents.js";
+import type { EngineRuntime } from "../engine/engineRuntime.js";
+import { assertCommissioner, findOwnedTeamId, ForbiddenError } from "../http/authz.js";
 import type { SocketData } from "./types.js";
 
-type Ack = ((response: { ok: true } | { ok: false; code: ErrorCode | "FORBIDDEN" | "NOT_JOINED" | "INVALID_PAYLOAD"; message: string }) => void) | undefined;
+type Ack = ((response: { ok: true } | { ok: false; code: ErrorCode | "FORBIDDEN" | "NOT_JOINED" | "INVALID_PAYLOAD" | "SERVER_ERROR"; message: string }) => void) | undefined;
 
 const clockSettingSchema = z.union([z.number().int().positive(), z.literal("off")]);
 
@@ -53,24 +51,40 @@ function data(socket: Socket): SocketData {
   return socket.data as SocketData;
 }
 
-async function dispatch(io: Server, db: Db, socket: Socket, action: Action, ack: Ack): Promise<void> {
+async function dispatch(runtime: EngineRuntime, socket: Socket, action: Action, ack: Ack): Promise<void> {
   const draftId = data(socket).draftId;
   if (!draftId) {
     ack?.({ ok: false, code: "NOT_JOINED", message: "Join a draft before sending intents." });
     return;
   }
   const ctx: Ctx = { now: Date.now(), rng: Math.random };
-  const result = await applyAction(db, draftId, action, ctx, data(socket).userId);
+
+  let result: Awaited<ReturnType<typeof runtime.applyAction>>;
+  try {
+    result = await runtime.applyAction(draftId, action, ctx, data(socket).userId);
+  } catch (err) {
+    // A DB failure never leaves the caller's ack hanging, and is reported as
+    // a distinct server error — never an engine ErrorCode, since the action
+    // wasn't rejected by a rule, the infrastructure just failed.
+    console.error("applyAction failed", err);
+    ack?.({ ok: false, code: "SERVER_ERROR", message: "The server failed to process this action." });
+    return;
+  }
+
   if (result.rejected) {
     ack?.({ ok: false, code: result.code, message: result.message });
     return;
   }
   ack?.({ ok: true });
-  broadcastEvents(io, draftId, result.state, result.events);
+  // Broadcasting itself happens inside runtime.applyAction via the
+  // broadcaster set by buildServer — the same path clock-driven expiries
+  // use, so every state change reaches clients exactly once regardless of
+  // whether a WS intent or a timer caused it.
 }
 
 /** Registers one handler per SPEC.md WS intent (plus the engine's admin:voidLot/markPlayerUnavailable/setRevealTopN, not in SPEC's table but real engine actions). */
-export function registerIntentHandlers(io: Server, db: Db, socket: Socket): void {
+export function registerIntentHandlers(runtime: EngineRuntime, socket: Socket): void {
+  const db = runtime.db;
   for (const [event, schema] of Object.entries(schemas)) {
     socket.on(event, async (payload: unknown, ack: Ack) => {
       const parsed = schema.safeParse(payload ?? {});
@@ -79,32 +93,38 @@ export function registerIntentHandlers(io: Server, db: Db, socket: Socket): void
         return;
       }
 
-      if (TEAM_SCOPED_EVENTS.has(event)) {
-        const leagueId = data(socket).leagueId;
-        const teamId = leagueId ? await findOwnedTeamId(db, data(socket).userId, leagueId) : null;
-        if (!teamId) {
-          ack?.({ ok: false, code: "FORBIDDEN", message: "You don't own a team in this league." });
+      // Everything below can throw (DB lookups, etc.) — never let an
+      // unexpected exception leave the caller's ack uncalled and hanging.
+      try {
+        if (TEAM_SCOPED_EVENTS.has(event)) {
+          const leagueId = data(socket).leagueId;
+          const teamId = leagueId ? await findOwnedTeamId(db, data(socket).userId, leagueId) : null;
+          if (!teamId) {
+            ack?.({ ok: false, code: "FORBIDDEN", message: "You don't own a team in this league." });
+            return;
+          }
+          const action = { type: event, teamId, ...parsed.data } as Action;
+          await dispatch(runtime, socket, action, ack);
           return;
         }
-        const action = { type: event, teamId, ...parsed.data } as Action;
-        await dispatch(io, db, socket, action, ack);
-        return;
-      }
 
-      if (ADMIN_EVENTS.has(event)) {
-        const leagueId = data(socket).leagueId;
-        if (!leagueId) {
-          ack?.({ ok: false, code: "NOT_JOINED", message: "Join a draft before sending intents." });
-          return;
-        }
-        try {
+        if (ADMIN_EVENTS.has(event)) {
+          const leagueId = data(socket).leagueId;
+          if (!leagueId) {
+            ack?.({ ok: false, code: "NOT_JOINED", message: "Join a draft before sending intents." });
+            return;
+          }
           await assertCommissioner(db, data(socket).userId, leagueId);
-        } catch {
-          ack?.({ ok: false, code: "FORBIDDEN", message: "Commissioner-only action." });
+          const action = { type: event, ...parsed.data } as Action;
+          await dispatch(runtime, socket, action, ack);
+        }
+      } catch (err) {
+        if (err instanceof ForbiddenError) {
+          ack?.({ ok: false, code: "FORBIDDEN", message: err.message });
           return;
         }
-        const action = { type: event, ...parsed.data } as Action;
-        await dispatch(io, db, socket, action, ack);
+        console.error(`intent handler failed for ${event}`, err);
+        ack?.({ ok: false, code: "SERVER_ERROR", message: "The server failed to process this action." });
       }
     });
   }

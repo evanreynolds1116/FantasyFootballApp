@@ -1,5 +1,5 @@
 import type { DraftState } from "@draft-app/engine";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { Db } from "./client.js";
 import type { EngineBookkeeping } from "./engineState.js";
 import { bidFromRow, lotFromRow, pickFromRow, playerFromRow, settingsFromRow, teamFromRow } from "./mappers.js";
@@ -24,15 +24,13 @@ export async function loadDraftState(db: Db, draftId: string): Promise<DraftStat
     .limit(1);
   if (!settingsRow) throw new Error(`draft_settings missing for league ${draftRow.leagueId}`);
 
-  const [teamRows, playerRows, lotRows, pickRows] = await Promise.all([
+  const [teamRows, playerRows, lotRows, pickRows, bidRows] = await Promise.all([
     db.select().from(team).where(eq(team.leagueId, draftRow.leagueId)),
     db.select().from(player).where(eq(player.leagueId, draftRow.leagueId)),
     db.select().from(lot).where(eq(lot.draftId, draftId)),
     db.select().from(pick).where(eq(pick.draftId, draftId)),
+    db.select().from(bid).where(eq(bid.draftId, draftId)),
   ]);
-
-  const lotIds = lotRows.map((l) => l.id);
-  const bidRows = lotIds.length > 0 ? await db.select().from(bid).where(inArray(bid.lotId, lotIds)) : [];
 
   const bookkeeping = draftRow.engineState as EngineBookkeeping;
 

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790368475911,
+      "tag": "0000_short_magneto",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790368717962,
+      "tag": "0001_fair_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790385228619,
+      "tag": "0002_boring_iron_fist",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import type { Action, DraftState, ReduceResult } from "@draft-app/engine";
-import { count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import type { Db } from "./client.js";
 import { extractBookkeeping } from "./engineState.js";
 import { bidToRow, lotToRow, pickToRow } from "./mappers.js";
@@ -40,23 +40,23 @@ export async function persistReduceResult(
       await tx
         .insert(lot)
         .values(row)
-        .onConflictDoUpdate({ target: lot.id, set: row });
+        .onConflictDoUpdate({ target: [lot.draftId, lot.id], set: row });
     }
 
     const prevBidsById = new Map(prevState.bids.map((b) => [b.id, b]));
     for (const b of nextState.bids) {
       if (prevBidsById.get(b.id) === b) continue;
-      const row = bidToRow(b);
+      const row = bidToRow(draftId, b);
       await tx
         .insert(bid)
         .values(row)
-        .onConflictDoUpdate({ target: bid.id, set: row });
+        .onConflictDoUpdate({ target: [bid.draftId, bid.id], set: row });
     }
 
     const nextPickIds = new Set(nextState.picks.map((p) => p.id));
     const removedPickIds = prevState.picks.filter((p) => !nextPickIds.has(p.id)).map((p) => p.id);
     if (removedPickIds.length > 0) {
-      await tx.delete(pick).where(inArray(pick.id, removedPickIds));
+      await tx.delete(pick).where(and(eq(pick.draftId, draftId), inArray(pick.id, removedPickIds)));
     }
     const prevPickIds = new Set(prevState.picks.map((p) => p.id));
     for (const p of nextState.picks) {
