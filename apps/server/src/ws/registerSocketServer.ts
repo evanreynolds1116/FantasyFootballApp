@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import type { Db } from "../db/client.js";
 import type { EngineRuntime } from "../engine/engineRuntime.js";
 import { draft } from "../db/schema.js";
+import { findOwnedTeamId } from "../http/authz.js";
 import { toPublicSnapshot } from "../shared/publicSnapshot.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
 import { registerIntentHandlers } from "./intentHandlers.js";
@@ -37,19 +38,26 @@ export function registerSocketServer(httpServer: HttpServer, db: Db, runtime: En
       (socket.data as SocketData).leagueId = leagueId;
       await socket.join(roomForDraft(draftId));
 
-      const state = await runtime.getOrHydrate(draftId);
-      socket.emit("state:snapshot", toPublicSnapshot(state));
+      const [state, myTeamId] = await Promise.all([
+        runtime.getOrHydrate(draftId),
+        findOwnedTeamId(db, (socket.data as SocketData).userId, leagueId),
+      ]);
+      socket.emit("state:snapshot", { ...toPublicSnapshot(state), myTeamId });
       ack?.({ ok: true });
     });
 
     socket.on("resync", async (_payload: unknown, ack?: (r: { ok: boolean }) => void) => {
       const draftId = (socket.data as SocketData).draftId;
-      if (!draftId) {
+      const leagueId = (socket.data as SocketData).leagueId;
+      if (!draftId || !leagueId) {
         ack?.({ ok: false });
         return;
       }
-      const state = await runtime.getOrHydrate(draftId);
-      socket.emit("state:snapshot", toPublicSnapshot(state));
+      const [state, myTeamId] = await Promise.all([
+        runtime.getOrHydrate(draftId),
+        findOwnedTeamId(db, (socket.data as SocketData).userId, leagueId),
+      ]);
+      socket.emit("state:snapshot", { ...toPublicSnapshot(state), myTeamId });
       ack?.({ ok: true });
     });
   });

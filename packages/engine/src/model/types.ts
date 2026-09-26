@@ -16,6 +16,7 @@ export type Player = {
   name: string;
   position: string;
   nflTeam?: string;
+  byeWeek?: number;
 };
 
 export type LotState =

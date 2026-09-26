@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Commissioner console</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&amp;family=Barlow:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Barlow,system-ui,sans-serif;background:#0F1712;color:#EEF2EA}
+.d{font-family:'Big Shoulders Display',Barlow,sans-serif}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 14px; background: #0F1712; color: #EEF2EA; font-family: Barlow, system-ui, sans-serif">
+  <div style="display: flex; justify-content: space-between; align-items: center">
+    <span class="d" style="font-size: 26px; font-weight: 800; text-transform: uppercase">Commissioner</span>
+    <span style="font-size: 13px; color: #A7B6A9">Auction · R3 · Lot 5 · 0:42</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+    <button type="button" style="height: 64px; border: 0; border-radius: 14px; background: #F2B84B; color: #1A1405; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>
+      Pause now
+    </button>
+    <button type="button" style="height: 64px; border: 1px solid #2C3D31; border-radius: 14px; background: #17221B; color: #EEF2EA; font-size: 18px; font-weight: 700">+15 seconds</button>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: #17221B; border-radius: 14px">
+    <div style="font-size: 13px; font-weight: 700; color: #A7B6A9; letter-spacing: 0.06em; text-transform: uppercase">Timed break</div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+      <button type="button" style="height: 44px; border: 1px solid #2C3D31; border-radius: 10px; background: transparent; color: #EEF2EA; font-size: 15px; font-weight: 600">5 min</button>
+      <button type="button" style="height: 44px; border: 1px solid #2C3D31; border-radius: 10px; background: transparent; color: #EEF2EA; font-size: 15px; font-weight: 600">10 min</button>
+      <button type="button" style="height: 44px; border: 1px solid #2C3D31; border-radius: 10px; background: transparent; color: #EEF2EA; font-size: 15px; font-weight: 600">15 min</button>
+      <button type="button" style="height: 44px; border: 1px solid #2C3D31; border-radius: 10px; background: transparent; color: #EEF2EA; font-size: 15px; font-weight: 600">30 min</button>
+    </div>
+    <div style="font-size: 13px; color: #A7B6A9">Shows a countdown everywhere. Draft resumes only when you tap Resume.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: #17221B; border-radius: 14px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <span style="font-size: 13px; font-weight: 700; color: #A7B6A9; letter-spacing: 0.06em; text-transform: uppercase">Clock lengths</span>
+      <span style="font-size: 12px; color: #A7B6A9">Apply from the next lot</span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px"><span>Nominate</span><span style="display: flex; align-items: center; gap: 6px"><button type="button" aria-label="Shorter nominate clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">−</button><strong style="width: 44px; text-align: center">30 s</strong><button type="button" aria-label="Longer nominate clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">+</button></span></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px"><span>Bid</span><span style="display: flex; align-items: center; gap: 6px"><button type="button" aria-label="Shorter bid clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">−</button><strong style="width: 44px; text-align: center">60 s</strong><button type="button" aria-label="Longer bid clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">+</button></span></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px"><span>Tie re-bid</span><span style="display: flex; align-items: center; gap: 6px"><button type="button" aria-label="Shorter tie clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">−</button><strong style="width: 44px; text-align: center">30 s</strong><button type="button" aria-label="Longer tie clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">+</button></span></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px"><span>Snake pick</span><span style="display: flex; align-items: center; gap: 6px"><button type="button" aria-label="Shorter pick clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">−</button><strong style="width: 44px; text-align: center">60 s</strong><button type="button" aria-label="Longer pick clock" style="width: 44px; height: 36px; border: 0; border-radius: 8px; background: #1F2D24; color: #EEF2EA; font-size: 18px">+</button></span></div>
+  </div>
+
+  <button type="button" style="height: 52px; border: 1px solid #6B3A2C; border-radius: 12px; background: transparent; color: #FF9A7A; font-size: 15px; font-weight: 600">Undo last result · Lot 4, Team 2 won K. Owens for $96</button>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: #17221B; border-radius: 14px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <span style="font-size: 13px; font-weight: 700; color: #A7B6A9; letter-spacing: 0.06em; text-transform: uppercase">Who's connected</span>
+      <span style="font-size: 13px; color: #FF9A7A; font-weight: 600">1 offline</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px">
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">1</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">2</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">3</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">4</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">5</span>
+      <span style="padding: 5px 0; text-align: center; border-radius: 8px; border: 1px dashed #FF9A7A; color: #FF9A7A; font-size: 13px; font-weight: 700">6 ✕</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">7</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">8</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">9</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">10</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">11</span>
+      <span style="padding: 6px 0; text-align: center; border-radius: 8px; background: #1E3325; color: #8FD6A8; font-size: 13px; font-weight: 700">12</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

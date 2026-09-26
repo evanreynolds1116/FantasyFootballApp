@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bid</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&amp;family=Barlow:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Barlow,system-ui,sans-serif;background:#0F1712;color:#EEF2EA}
+.d{font-family:'Big Shoulders Display',Barlow,sans-serif}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 14px; background: #0F1712; color: #EEF2EA; font-family: Barlow, system-ui, sans-serif">
+  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #A7B6A9; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase">
+    <span>Round 3 · Lot 5 of 12</span>
+    <span>Nominated by Team 9</span>
+  </div>
+
+  <div style="display: flex; gap: 16px; align-items: center; padding: 16px; background: #17221B; border: 1px solid #2C3D31; border-radius: 16px">
+    <div style="position: relative; width: 96px; height: 96px; flex-shrink: 0">
+      <svg width="96" height="96" viewBox="0 0 96 96" aria-hidden="true">
+        <circle cx="48" cy="48" r="42" fill="none" stroke="#2C3D31" stroke-width="7"></circle>
+        <circle cx="48" cy="48" r="42" fill="none" stroke="#F2B84B" stroke-width="7" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="79" transform="rotate(-90 48 48)"></circle>
+      </svg>
+      <div class="d" aria-label="42 seconds left" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800">0:42</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+      <span style="align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: #2A3B2F; color: #F2B84B; font-size: 12px; font-weight: 700; letter-spacing: 0.08em">RB</span>
+      <div class="d" style="font-size: 32px; font-weight: 800; line-height: 1; text-transform: uppercase">Marcus Reed</div>
+      <div style="font-size: 14px; color: #A7B6A9">DAL · Bye week 7</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+    <div style="padding: 10px 12px; background: #17221B; border-radius: 12px">
+      <div style="font-size: 12px; color: #A7B6A9">Budget left</div>
+      <div class="d" style="font-size: 24px; font-weight: 700">$612</div>
+    </div>
+    <div style="padding: 10px 12px; background: #17221B; border-radius: 12px">
+      <div style="font-size: 12px; color: #A7B6A9">Auction spots</div>
+      <div class="d" style="font-size: 24px; font-weight: 700">5 / 8</div>
+    </div>
+    <div style="padding: 10px 12px; background: #17221B; border-radius: 12px">
+      <div style="font-size: 12px; color: #A7B6A9">Your RBs</div>
+      <div class="d" style="font-size: 24px; font-weight: 700">2 / 5</div>
+    </div>
+  </div>
+
+  <sc-if value="{{notSubmitted}}" hint-placeholder-val="{{ true }}">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 8px 16px; border: 2px solid #F2B84B; border-radius: 14px; background: #121C15">
+        <span class="d" aria-live="polite" style="font-size: 48px; font-weight: 800; letter-spacing: 0.01em">${{amountDisplay}}</span>
+        <span style="font-size: 13px; color: #A7B6A9">Min $5 · max $612</span>
+      </div>
+      <sc-if value="{{hasError}}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="font-size: 14px; font-weight: 600; color: #FF9A7A">{{error}}</div>
+      </sc-if>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+          <button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="height: 52px; border: 0; border-radius: 12px; background: #1F2D24; color: #EEF2EA; font-size: 24px; font-weight: 600; cursor: pointer">{{k.label}}</button>
+        </sc-for>
+      </div>
+      <button type="button" onClick="{{submit}}" style="height: 56px; border: 0; border-radius: 14px; background: #F2B84B; color: #1A1405; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer">Lock in sealed bid</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isSubmitted}}" hint-placeholder-val="{{ false }}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 12px; align-items: stretch; justify-content: center; padding: 20px; border: 2px solid #3E7A55; border-radius: 16px; background: #13241A">
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: #8FD6A8">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+        Your bid is in and hidden
+      </div>
+      <div class="d" style="font-size: 64px; font-weight: 800; line-height: 1">${{submittedAmount}}</div>
+      <div style="font-size: 14px; color: #A7B6A9">No one sees amounts until the clock hits zero. You can change it until then.</div>
+      <button type="button" onClick="{{change}}" style="height: 48px; border: 1px solid #3E7A55; border-radius: 12px; background: transparent; color: #EEF2EA; font-size: 16px; font-weight: 600; cursor: pointer">Change bid</button>
+    </div>
+  </sc-if>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: auto">
+    <div style="display: flex; justify-content: space-between; font-size: 13px; color: #A7B6A9">
+      <span><strong style="color: #EEF2EA">{{bidCount}} of 12</strong> have bid</span>
+      <span>Amounts stay hidden</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px">
+      <sc-for list="{{teams}}" as="t" hint-placeholder-count="12">
+        <sc-if value="{{t.in}}" hint-placeholder-val="{{ true }}">
+          <div title="Team {{t.n}} has bid" style="height: 26px; border-radius: 6px; background: #F2B84B; color: #1A1405; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{t.n}}</div>
+        </sc-if>
+        <sc-if value="{{t.out}}" hint-placeholder-val="{{ false }}">
+          <div title="Team {{t.n}} has not bid" style="height: 26px; box-sizing: border-box; border-radius: 6px; border: 1px dashed #4A5E50; color: #A7B6A9; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{t.n}}</div>
+        </sc-if>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { amount: '', submitted: null, error: '' };
+  }
+  renderVals() {
+    var self = this;
+    var budget = 612, minBid = 5, me = 4;
+    var amount = this.state.amount;
+    var labels = ['1','2','3','4','5','6','7','8','9','Clear','0','Del'];
+    var keys = labels.map(function (l) {
+      return {
+        label: l === 'Del' ? '⌫' : l,
+        aria: l === 'Del' ? 'Delete last digit' : (l === 'Clear' ? 'Clear amount' : l),
+        press: function () {
+          var a = self.state.amount;
+          if (l === 'Clear') a = '';
+          else if (l === 'Del') a = a.slice(0, -1);
+          else if (a.length < 5) a = (a === '0' ? '' : a) + l;
+          self.setState({ amount: a, error: '' });
+        }
+      };
+    });
+    var already = [1, 2, 3, 5, 7, 8, 9];
+    var submitted = this.state.submitted;
+    var teams = [];
+    for (var i = 1; i <= 12; i++) {
+      var isIn = already.indexOf(i) !== -1 || (i === me && submitted !== null);
+      teams.push({ n: i, in: isIn, out: !isIn });
+    }
+    return {
+      keys: keys,
+      amountDisplay: amount === '' ? '0' : amount,
+      error: this.state.error,
+      hasError: this.state.error !== '',
+      notSubmitted: submitted === null,
+      isSubmitted: submitted !== null,
+      submittedAmount: submitted,
+      bidCount: already.length + (submitted !== null ? 1 : 0),
+      teams: teams,
+      submit: function () {
+        var n = parseInt(self.state.amount || '0', 10);
+        if (n < minBid) self.setState({ error: 'Minimum bid is $5' });
+        else if (n > budget) self.setState({ error: 'That is more than your $612 budget' });
+        else self.setState({ submitted: n, error: '' });
+      },
+      change: function () { self.setState({ submitted: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-bg text-text font-body;
+  margin: 0;
+}
+
+.font-display {
+  font-family: "Big Shoulders Display", Barlow, sans-serif;
+}
+
+/* Section labels per UI.md: 13px, 700, uppercase, letter-spacing 0.06em, muted. */
+.label {
+  @apply text-[13px] font-bold uppercase tracking-[0.06em] text-muted;
+}

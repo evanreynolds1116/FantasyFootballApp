@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Big board</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&amp;family=Barlow:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Barlow,system-ui,sans-serif;background:#0F1712;color:#EEF2EA}
+.d{font-family:'Big Shoulders Display',Barlow,sans-serif}
+</style>
+</helmet>
+<div style="width: 1440px; height: 810px; box-sizing: border-box; padding: 32px 48px; display: flex; flex-direction: column; gap: 20px; background: #0F1712; color: #EEF2EA; font-family: Barlow, system-ui, sans-serif">
+  <div style="display: flex; justify-content: space-between; align-items: baseline">
+    <span class="d" style="font-size: 34px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em">[League name] Draft 2026</span>
+    <span style="font-size: 22px; font-weight: 600; color: #A7B6A9; letter-spacing: 0.06em; text-transform: uppercase">Auction · Round 3 · Lot 5 of 11</span>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; gap: 32px; min-height: 0">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 36px; padding: 24px 36px; background: #17221B; border: 1px solid #2C3D31; border-radius: 24px">
+        <div style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1">
+          <span style="align-self: flex-start; padding: 4px 12px; border-radius: 8px; background: #2A3B2F; color: #F2B84B; font-size: 18px; font-weight: 700; letter-spacing: 0.08em">RB · DAL</span>
+          <span class="d" style="font-size: 84px; font-weight: 800; line-height: 0.9; text-transform: uppercase">Marcus Reed</span>
+          <span style="font-size: 20px; color: #A7B6A9">Nominated by Team 5 · Sealed bids close when the clock hits zero</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+          <span class="d" style="font-size: 124px; font-weight: 800; line-height: 0.85; color: #F2B84B">0:42</span>
+          <span style="font-size: 16px; color: #A7B6A9; letter-spacing: 0.08em; text-transform: uppercase">left to bid</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; font-size: 20px"><span><strong>8 of 11</strong> have bid</span><span style="color: #A7B6A9">Amounts hidden until reveal</span></div>
+        <div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px">
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">1</div>
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">2</div>
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">3</div>
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">4</div>
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">5</div>
+          <div style="height: 50px; box-sizing: border-box; border-radius: 10px; border: 2px dashed #4A5E50; color: #A7B6A9; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700">6</div>
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">7</div>
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">8</div>
+          <div style="height: 50px; border-radius: 10px; background: #F2B84B; color: #1A1405; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800">9</div>
+          <div style="height: 50px; box-sizing: border-box; border-radius: 10px; border: 2px dashed #4A5E50; color: #A7B6A9; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700">10</div>
+          <div style="height: 50px; box-sizing: border-box; border-radius: 10px; background: #1A221D; color: #6F7E72; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700">11 · out</div>
+          <div style="height: 50px; box-sizing: border-box; border-radius: 10px; border: 2px dashed #4A5E50; color: #A7B6A9; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700">12</div>
+        </div>
+      </div>
+
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+        <div style="display: flex; justify-content: space-between; font-size: 20px">
+          <span style="font-weight: 700; color: #A7B6A9; letter-spacing: 0.06em; text-transform: uppercase">Round 3 lots · nominated 1 → 12</span>
+          <span style="color: #A7B6A9">Team 11 is broke, so it skipped nominating</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #141D17; color: #A7B6A9">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em">LOT 1 · SOLD</span>
+            <span style="font-size: 19px; font-weight: 700; color: #C9D3CA">Cal Donovan</span>
+            <span style="font-size: 15px">QB · by Team 1</span>
+            <span style="font-size: 15px">Team 6 · <strong style="color: #EEF2EA">$208</strong></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #141D17; color: #A7B6A9">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em">LOT 2 · SOLD</span>
+            <span style="font-size: 19px; font-weight: 700; color: #C9D3CA">Eli Grant</span>
+            <span style="font-size: 15px">WR · by Team 2</span>
+            <span style="font-size: 15px">Team 3 · <strong style="color: #EEF2EA">$265</strong></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #141D17; color: #A7B6A9">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em">LOT 3 · SOLD</span>
+            <span style="font-size: 19px; font-weight: 700; color: #C9D3CA">Tre Banks</span>
+            <span style="font-size: 15px">RB · by Team 3</span>
+            <span style="font-size: 15px">Team 8 · <strong style="color: #EEF2EA">$212</strong></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #141D17; color: #A7B6A9">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em">LOT 4 · SOLD</span>
+            <span style="font-size: 19px; font-weight: 700; color: #C9D3CA">Kyle Owens</span>
+            <span style="font-size: 15px">K · by Team 4</span>
+            <span style="font-size: 15px">Team 2 · <strong style="color: #EEF2EA">$96</strong></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #F2B84B; color: #1A1405">
+            <span style="font-size: 13px; font-weight: 800; letter-spacing: 0.06em">LOT 5 · BIDDING NOW</span>
+            <span style="font-size: 19px; font-weight: 800">Marcus Reed</span>
+            <span style="font-size: 15px; font-weight: 600">RB · by Team 5</span>
+            <span style="font-size: 15px; font-weight: 600">0:42 left</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; box-sizing: border-box; border-radius: 12px; border: 2px solid #F2B84B; background: #17221B">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #F2B84B">LOT 6 · UP NEXT</span>
+            <span style="font-size: 19px; font-weight: 700">Darius Cole</span>
+            <span style="font-size: 15px; color: #A7B6A9">WR · by Team 6</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #17221B">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #A7B6A9">LOT 7</span>
+            <span style="font-size: 19px; font-weight: 700">Rams DEF</span>
+            <span style="font-size: 15px; color: #A7B6A9">DEF · by Team 7</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #17221B">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #A7B6A9">LOT 8</span>
+            <span style="font-size: 19px; font-weight: 700">Andre Pike</span>
+            <span style="font-size: 15px; color: #A7B6A9">RB · by Team 8</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #17221B">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #A7B6A9">LOT 9</span>
+            <span style="font-size: 19px; font-weight: 700">Sam Whitfield</span>
+            <span style="font-size: 15px; color: #A7B6A9">TE · by Team 9</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #17221B">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #A7B6A9">LOT 10</span>
+            <span style="font-size: 19px; font-weight: 700">Jalen Brooks</span>
+            <span style="font-size: 15px; color: #A7B6A9">WR · by Team 10</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #17221B">
+            <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #A7B6A9">LOT 11</span>
+            <span style="font-size: 19px; font-weight: 700">Tyler Voss</span>
+            <span style="font-size: 15px; color: #A7B6A9">QB · by Team 12</span>
+          </div>
+          <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 12px 14px; box-sizing: border-box; border-radius: 12px; border: 2px dashed #2C3D31; color: #A7B6A9">
+            <span style="font-size: 15px; font-weight: 600">Next: round 4</span>
+            <span style="font-size: 15px">nominated 12 → 1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width: 400px; flex-shrink: 0; display: flex; flex-direction: column; background: #17221B; border: 1px solid #2C3D31; border-radius: 24px; overflow: hidden">
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 16px 20px; font-size: 15px; font-weight: 700; color: #A7B6A9; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid #2C3D31">
+        <span>#</span><span>Team</span><span style="text-align: right">Left</span><span style="text-align: right">Spots</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>1</span><span>Blitz Brigade</span><span style="text-align: right; font-weight: 700">$488</span><span style="text-align: right">4/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>2</span><span>Pigskin Pros</span><span style="text-align: right; font-weight: 700">$301</span><span style="text-align: right">5/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>3</span><span>Fourth &amp; Long</span><span style="text-align: right; font-weight: 700">$550</span><span style="text-align: right">4/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>4</span><span>End Zone Elite</span><span style="text-align: right; font-weight: 700">$612</span><span style="text-align: right">5/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>5</span><span>Red Zone Rebels</span><span style="text-align: right; font-weight: 700">$207</span><span style="text-align: right">6/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>6</span><span>Hail Marys</span><span style="text-align: right; font-weight: 700">$445</span><span style="text-align: right">4/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>7</span><span>Gridiron Gang</span><span style="text-align: right; font-weight: 700">$540</span><span style="text-align: right">5/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>8</span><span>Sunday Funday</span><span style="text-align: right; font-weight: 700">$168</span><span style="text-align: right">6/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>9</span><span>Audible Kings</span><span style="text-align: right; font-weight: 700">$390</span><span style="text-align: right">5/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>10</span><span>Two-Point Try</span><span style="text-align: right; font-weight: 700">$622</span><span style="text-align: right">4/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px; background: #2A1812; color: #FF9A7A"><span>11</span><span>Fumble Squad · broke</span><span style="text-align: right; font-weight: 700">$3</span><span style="text-align: right">6/8</span></div>
+      <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 88px 64px; gap: 8px; padding: 11px 20px; font-size: 20px"><span>12</span><span>Pick Six</span><span style="text-align: right; font-weight: 700">$275</span><span style="text-align: right">5/8</span></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":810}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

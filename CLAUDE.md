@@ -1,5 +1,7 @@
 # Draft App — project notes for Claude Code
 
+For anything in apps/web, read UI.md and match the mockups in design/mockups/
+
 Real-time web app for a closed (sealed-bid) auction + snake fantasy football draft. The full spec is in `SPEC.md` — read it before making changes; it is the source of truth for rules. If code and spec disagree, ask before changing either.
 
 ## Stack
