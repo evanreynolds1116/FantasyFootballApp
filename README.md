@@ -56,17 +56,20 @@ The draft runs in two phases. Every number below is a league setting; the defaul
 
 ## Walkthrough of the app
 
-All screens use the "stadium at night" dark theme (dark green, chalk white, scoreboard amber) and work on phones (from 360 px wide), laptops, and a TV.
+All screens use the "stadium at night" dark theme (dark green, chalk white, scoreboard amber) and work on phones (from 360 px wide), laptops, and a TV. The screenshots are from a demo draft with the league's default settings and made-up players.
 
-### 1. Sign in (`/login`)
+### 1. Sign in (`/login`) and Home (`/`)
 
 Enter your name (and optionally an email, so you can get back to the same team later). *This is a development-only login; real magic-link login is planned.* You're sent back to wherever you were headed.
 
-### 2. Home (`/`)
+Home lists your leagues — which you run, which team is yours, and each league's status ("Setting up · 7 of 12 teams claimed", "Draft is live", "Draft complete"). From here: **Create a league**, or join one by typing an invite code.
 
-Your leagues — which you run, which team is yours, and each league's status ("Setting up · 7 of 12 teams claimed", "Draft is live", "Draft complete"). From here: **Create a league**, or join one by typing an invite code.
+<p>
+  <img src="docs/screenshots/sign-in.png" alt="Sign-in screen" width="260">
+  <img src="docs/screenshots/home.png" alt="Home: your leagues" width="260">
+</p>
 
-### 3. League setup (`/league/new`)
+### 2. League setup (`/league/new`)
 
 The commissioner's settings form, with the league's usual rules filled in:
 
@@ -78,7 +81,9 @@ The commissioner's settings form, with the league's usual rules filled in:
 
 A **"Rules at a glance"** panel reads the settings back as plain sentences ("12 teams with $1,000 each buy 8 players at sealed-bid auction, then snake-draft 9 more…"). Problems are listed as you type, using the same validator the server runs, so the form and server can't disagree.
 
-### 4. Lobby (`/league/:id`)
+<img src="docs/screenshots/league-setup.png" alt="League setup form with the rules-at-a-glance summary" width="800">
+
+### 3. Lobby (`/league/:id`)
 
 The league's waiting room, refreshed every few seconds for everyone:
 
@@ -90,29 +95,61 @@ The league's waiting room, refreshed every few seconds for everyone:
 
 Everyone watching the lobby is moved into the draft automatically when it starts.
 
-### 5. Join (`/join/:code`)
+<img src="docs/screenshots/lobby.png" alt="Lobby: invite link, teams and draft order, player pool, start" width="800">
+
+### 4. Join (`/join/:code`)
 
 Open the invite link, sign in if needed, pick an open team, give it a name. Two people can't grab the same team — one wins, the other is asked to pick again.
 
-### 6. Draft screen (`/draft/:id`)
+<img src="docs/screenshots/join.png" alt="Join: pick an open team and name it" width="260">
 
-One screen that shows whatever is happening right now:
+### 5. Draft screen (`/draft/:id`)
 
-- **Nominate** — when it's your turn: "You're on the clock" with the nomination clock, player search, position filters, and "This round so far". Everyone else sees "Team 4 is nominating…".
-- **Bid** — the player card with a countdown ring; your budget, auction spots and count at this position; an amount entry (keypad on phones, a typed field + Enter on laptops); **Lock in sealed bid** and **Pass**. After locking in: "Your bid is in and hidden" (or "You passed") with **Change bid / pass**. A strip shows "N of M are in" — one tile per team, never amounts, bids and passes identical. If you can't bid (full, broke, at a position max) the controls say why. The laptop layout adds this round's lots on the left and every team's max bid / spots / position count on the right.
-- **Reveal** — the winner card and price, runner-up bids per the setting, "N other bids stay hidden", "N teams passed", the winner's budget before → after, and what's up next.
-- **Tie re-bid** — for tied teams: "You're still tied" with the tie clock, the history of re-bid rounds (knocked-out teams struck through), −/+ $5 steppers and quick-raise buttons, and the minimum allowed. Everyone else sees "Tie-break in progress".
-- **Snake pick** — on-the-clock banner with who's next, "You still need" position chips, available players (greyed with the reason if a pick would break your limits), and a Board tab with the rounds × teams grid.
-- **Make-up rounds** — broke teams get "Your make-up pick" with an explanation; everyone else sees "Your roster is full". The board adds make-up rows (M1, M2…).
-- **Results** — when the draft ends (see below).
+One screen that shows whatever is happening right now.
+
+**Nominate.** When it's your turn: "You're on the clock" with the nomination clock. Right under it, **Nominated this round** lists every player put up so far and by whom, who's nominating now and who's next — so you can see what's taken before you search. Then player search and position filters. Searching for someone who can't be nominated shows him greyed with the reason ("Already nominated this round — Lot 1, by Team 1", "Already drafted by Team 2 ($96)"). Everyone else sees "Team 4 is nominating…" and the same list.
+
+<p>
+  <img src="docs/screenshots/nominate.png" alt="Nominate: on the clock, with the nominated-this-round list" width="260">
+  <img src="docs/screenshots/nominate-search.png" alt="Nominate search showing an already-nominated player and why" width="260">
+</p>
+
+**Bid.** The player card with a countdown ring; your budget, auction spots and count at this position; an amount entry (keypad on phones, a typed field + Enter on laptops); **Lock in sealed bid** and **Pass**. After locking in: "Your bid is in and hidden" (or "You passed") with **Change bid / pass**. A strip shows "N of M are in" — one tile per team, never amounts, bids and passes identical. If you can't bid (full, broke, at a position max) the controls say why.
+
+<p>
+  <img src="docs/screenshots/bid-phone.png" alt="Bid on a phone: keypad, Lock in sealed bid, Pass" width="260">
+  <img src="docs/screenshots/bid-locked-in.png" alt="Your bid is in and hidden" width="260">
+  <img src="docs/screenshots/bid-passed.png" alt="You passed on this player" width="260">
+</p>
+
+The laptop layout adds this round's lots on the left and every team's max bid / spots / position count on the right.
+
+<img src="docs/screenshots/bid-laptop.png" alt="Bid on a laptop" width="800">
+
+**Reveal and ties.** The reveal shows the winner and price, runner-up bids per the setting, "N other bids stay hidden", "N teams passed", the winner's budget before → after, and what's up next. Tied teams get "You're still tied" with the tie clock, the history of re-bid rounds (knocked-out teams struck through), −/+ $5 steppers and quick-raise buttons, and the minimum allowed; everyone else sees "Tie-break in progress".
+
+<p>
+  <img src="docs/screenshots/reveal.png" alt="Reveal: winner, runner-up bids, hidden bids and passes" width="260">
+  <img src="docs/screenshots/tie-rebid.png" alt="Tie re-bid" width="260">
+</p>
+
+**Snake and make-up picks.** The on-the-clock banner with who's next, "You still need" position chips, available players (greyed with the reason if a pick would break your limits), and a Board tab with the rounds × teams grid. In make-up rounds, broke teams get "Your make-up pick" with an explanation; everyone else sees "Your roster is full", and the board adds make-up rows (M1, M2…).
+
+<p>
+  <img src="docs/screenshots/snake-pick.png" alt="Snake pick: on the clock, you still need, greyed players" width="260">
+  <img src="docs/screenshots/snake-board.png" alt="Snake board tab" width="260">
+  <img src="docs/screenshots/makeup-pick.png" alt="Make-up pick for a broke team" width="260">
+</p>
 
 Every screen handles **paused / on break** (banner, inputs locked, clocks frozen), **reconnecting** (inputs locked until state is back), and the **last 10 seconds** (clock turns orange).
 
-### 7. Rosters & budgets (`/draft/:id/rosters`)
+### 6. Rosters & budgets (`/draft/:id/rosters`)
 
 Every team's money left, max bid, auction spots left, roster count and a **broke** flag, plus any team's roster by position group with counts against limits and how each player was acquired ("$96", "Snake R3", "Make-up R1", "Auto-pick R4").
 
-### 8. Commissioner console (`/draft/:id/commish`)
+<img src="docs/screenshots/rosters.png" alt="Rosters & budgets" width="800">
+
+### 7. Commissioner console (`/draft/:id/commish`)
 
 Commissioner only (a link appears in the draft header):
 
@@ -123,17 +160,31 @@ Commissioner only (a link appears in the draft header):
 - **Tie decision** — only when a tie reaches the fallback and the league chose "commissioner decides".
 - **Who's connected** — a tile per team; offline teams are marked, with a count.
 
-### 9. Big board (`/board/:id`)
+<img src="docs/screenshots/commissioner-console.png" alt="Commissioner console" width="260">
 
-A read-only 16:9 view for a TV or projector — no login needed. It shows the live lot with a very large clock, the "who's in" strip, this round's lots (sold / bidding now / up next), every team's money and spots (broke teams flagged), reveals, tie-breaks, break countdowns, the snake and make-up board, and finally the results. Because it needs no login, **the big board link doubles as the shareable results page**.
+### 8. Big board (`/board/:id`)
 
-### 10. Results (end of draft)
+A read-only 16:9 view for a TV or projector — no login needed. During nominations it shows a tile per team in nomination order (the player each has put up, the team on the clock with its countdown, the teams still to come). During bidding: the live lot with a very large clock, the "who's in" strip, this round's lots (sold / bidding now / up next), and every team's money and spots (broke teams flagged). It also shows reveals, tie-breaks, break countdowns, the snake and make-up board, and finally the results. Because it needs no login, **the big board link doubles as the shareable results page**.
+
+<img src="docs/screenshots/board-nominations.png" alt="Big board during nominations" width="800">
+
+<img src="docs/screenshots/board-auction.png" alt="Big board during bidding" width="800">
+
+<img src="docs/screenshots/board-makeup.png" alt="Big board during make-up rounds" width="800">
+
+### 9. Results (end of draft)
 
 On the draft screen and the big board:
 
 - **Rosters & spend** — every team's final roster, money spent and left.
 - **Draft log** — every pick in order with price, stage ("Auction R3", "Snake R2", "Make-up R1"), notes (tie-break, auto-pick, no bids) and the runner-up bids that were revealed. Bids that were never revealed stay secret, even now.
 - **Download CSV** — one row per pick.
+
+<img src="docs/screenshots/results.png" alt="Final results: rosters and spend" width="800">
+
+<img src="docs/screenshots/results-draft-log.png" alt="Final results: draft log" width="800">
+
+<img src="docs/screenshots/board-results.png" alt="Final results on the big board" width="800">
 
 ---
 
@@ -243,6 +294,7 @@ apps/
                        setup, lobby, primitives
     src/store/         DraftProvider: the socket connection and current snapshot
 design/mockups/      HTML mockups for the draft-day screens (visual reference)
+docs/screenshots/    Screenshots used in this README (from a demo draft)
 SPEC.md              Product spec — the source of truth for rules
 UI.md                UI spec for the draft-day screens
 PROGRESS.md          Handoff notes: what's built, known gaps, what's next
