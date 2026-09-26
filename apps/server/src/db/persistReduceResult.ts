@@ -107,13 +107,13 @@ export async function persistReduceResult(
       returning 1
     ),
     bid_up as (
-      insert into bid (id, draft_id, lot_id, team_id, tie_round, amount, received_at, superseded)
-      select r.id, r.draft_id, r.lot_id, r.team_id, r.tie_round, r.amount, r.received_at, r.superseded
+      insert into bid (id, draft_id, lot_id, team_id, tie_round, amount, received_at, superseded, pass)
+      select r.id, r.draft_id, r.lot_id, r.team_id, r.tie_round, r.amount, r.received_at, r.superseded, r.pass
       from p, jsonb_to_recordset(p.j->'bids') as r(
-        id text, draft_id uuid, lot_id text, team_id uuid, tie_round int, amount int, received_at timestamptz, superseded boolean)
+        id text, draft_id uuid, lot_id text, team_id uuid, tie_round int, amount int, received_at timestamptz, superseded boolean, pass boolean)
       on conflict (draft_id, id) do update set
         lot_id = excluded.lot_id, team_id = excluded.team_id, tie_round = excluded.tie_round, amount = excluded.amount,
-        received_at = excluded.received_at, superseded = excluded.superseded
+        received_at = excluded.received_at, superseded = excluded.superseded, pass = excluded.pass
       returning 1
     ),
     pick_del as (

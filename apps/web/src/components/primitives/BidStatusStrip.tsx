@@ -13,7 +13,7 @@ const sizeClasses = {
   board: "h-[50px] text-2xl gap-2.5",
 };
 
-/** "N of M have bid" + one tile per team: solid amber (bid), dashed (not yet), dimmed "out" (ineligible). Never an amount. */
+/** "N of M are in" + one tile per team: solid amber (bid or pass — deliberately identical), dashed (not yet), dimmed "out" (ineligible). Never an amount. */
 export function BidStatusStrip({ teams, hasBidTeamIds, eligibleTeamIds, size }: Props) {
   const bidCount = teams.filter((t) => hasBidTeamIds.has(t.id)).length;
   const cellHeight = sizeClasses[size].match(/h-\S+/)?.[0] ?? "h-10";
@@ -26,7 +26,7 @@ export function BidStatusStrip({ teams, hasBidTeamIds, eligibleTeamIds, size }: 
           <strong className="text-text">
             {bidCount} of {teams.length}
           </strong>{" "}
-          have bid
+          are in
         </span>
         <span>Amounts stay hidden{size !== "phone" ? " until the clock hits zero" : ""}</span>
       </div>

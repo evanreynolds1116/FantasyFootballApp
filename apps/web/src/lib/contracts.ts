@@ -47,5 +47,7 @@ export type RevealPayload = {
   lotId: string;
   bids: RevealedBid[];
   winnerTeamId: string | null;
+  /** How many teams passed on the lot — a count only, never who. */
+  passes: number;
   until: number;
 };

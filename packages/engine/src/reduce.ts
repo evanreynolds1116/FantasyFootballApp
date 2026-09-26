@@ -3,7 +3,7 @@ import type { Ctx } from "./clock.js";
 import type { DraftState } from "./model/types.js";
 import { applyAdminStart } from "./rules/start.js";
 import { applyNominate, applyNominationExpired } from "./rules/nomination.js";
-import { applyBidSubmit } from "./rules/bidding.js";
+import { applyBidPass, applyBidSubmit } from "./rules/bidding.js";
 import { applyLotExpired } from "./rules/reveal.js";
 import { applyResolveTie, applyTieExpired, applyTieRebid } from "./rules/tie.js";
 import { applyPickExpired as applySnakePickExpired, applyPickMake as applySnakePickMake } from "./rules/snake.js";
@@ -34,6 +34,8 @@ export function reduce(state: DraftState, action: Action, ctx: Ctx): ReduceResul
       return applyNominationExpired(state, action, ctx);
     case "bid:submit":
       return applyBidSubmit(state, action, ctx);
+    case "bid:pass":
+      return applyBidPass(state, action, ctx);
     case "clock:lotExpired":
       return applyLotExpired(state, action, ctx);
     case "tie:rebid":

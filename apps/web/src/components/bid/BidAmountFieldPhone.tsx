@@ -13,7 +13,9 @@ export function BidAmountFieldPhone({ form, minBid, budget, disabled, disabledRe
         </span>
       </div>
       {form.previousBidStands && (
-        <div className="text-sm text-muted">Your previous bid stays in if you don&apos;t submit a new one before the clock ends.</div>
+        <div className="text-sm text-muted">
+          Your previous {form.lockedIn === "pass" ? "pass" : "bid"} stays in if you don&apos;t submit a new one before the clock ends.
+        </div>
       )}
       {form.error && (
         <div role="alert" className="text-sm font-semibold text-warn">
@@ -24,14 +26,25 @@ export function BidAmountFieldPhone({ form, minBid, budget, disabled, disabledRe
         <div className="text-sm font-semibold text-warn">{disabledReason}</div>
       )}
       <Keypad amount={form.amount} onChange={form.setAmount} disabled={disabled} />
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => void form.submit()}
-        className="h-14 rounded-panel bg-accent text-lg font-bold uppercase tracking-[0.04em] text-on-accent disabled:opacity-40"
-      >
-        Lock in sealed bid
-      </button>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => void form.pass()}
+          className="h-14 rounded-panel border border-line text-lg font-bold uppercase tracking-[0.04em] disabled:opacity-40"
+        >
+          Pass
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => void form.submit()}
+          className="h-14 rounded-panel bg-accent text-lg font-bold uppercase tracking-[0.04em] text-on-accent disabled:opacity-40"
+        >
+          Lock in sealed bid
+        </button>
+      </div>
+      <div className="text-[13px] text-muted">Not interested? Pass locks you in without bidding, so the lot can close sooner. Nobody can tell a pass from a bid.</div>
     </div>
   );
 }

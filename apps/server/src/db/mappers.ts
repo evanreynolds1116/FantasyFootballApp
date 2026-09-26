@@ -121,6 +121,7 @@ export function bidFromRow(row: BidRow): Bid {
     amount: row.amount,
     receivedAt: row.receivedAt.getTime(),
     superseded: row.superseded,
+    ...(row.pass ? { pass: true } : {}),
   };
 }
 
@@ -134,6 +135,7 @@ export function bidToRow(draftId: string, bid: Bid): typeof schema.bid.$inferIns
     amount: bid.amount,
     receivedAt: new Date(bid.receivedAt),
     superseded: bid.superseded,
+    pass: bid.pass === true,
   };
 }
 

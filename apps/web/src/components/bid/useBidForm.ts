@@ -11,17 +11,23 @@ type Options = {
   hasServerBid: boolean;
 };
 
+/** What this browser locked in: a bid, a pass, or "unknown" when the server says we're in but we don't remember which (e.g. after a refresh). */
+export type LockedIn = "bid" | "pass" | "unknown";
+
 export type BidForm = {
   amount: string;
   error: string;
   /** Non-null once submitted this session; null if we merely know a bid exists server-side (e.g. after reconnect) without remembering the amount. */
   submittedAmount: number | null;
+  lockedIn: LockedIn;
   hasBid: boolean;
   isSubmitted: boolean;
   /** True while editing a bid that's already standing server-side — it stays in if the clock runs out before you resubmit. */
   previousBidStands: boolean;
   setAmount: (value: string) => void;
   submit: () => Promise<void>;
+  /** Locks in "no bid" so the lot can close early; changeable like a bid until the clock ends. */
+  pass: () => Promise<void>;
   change: () => void;
 };
 
@@ -36,6 +42,7 @@ export function useBidForm({ socket, lotId, minBid, budget, hasServerBid }: Opti
   const [amount, setAmountRaw] = useState("");
   const [error, setError] = useState("");
   const [submittedAmount, setSubmittedAmount] = useState<number | null>(null);
+  const [passed, setPassed] = useState(false);
   // hasServerBid reflects the server's standing bid and stays true across a
   // "Change bid" click (the old bid still stands until a new one replaces
   // it) — this is the local override that lets the form come back even
@@ -49,6 +56,7 @@ export function useBidForm({ socket, lotId, minBid, budget, hasServerBid }: Opti
       setAmountRaw("");
       setError("");
       setSubmittedAmount(null);
+      setPassed(false);
       setIsEditing(false);
     }
   }, [lotId]);
@@ -74,11 +82,25 @@ export function useBidForm({ socket, lotId, minBid, budget, hasServerBid }: Opti
       return;
     }
     setSubmittedAmount(n);
+    setPassed(false);
+    setIsEditing(false);
+    setError("");
+  };
+
+  const pass = async () => {
+    const ack = await emitIntent(socket, "bid:pass", { lotId });
+    if (!ack.ok) {
+      setError(ack.message);
+      return;
+    }
+    setPassed(true);
+    setSubmittedAmount(null);
     setIsEditing(false);
     setError("");
   };
 
   const change = () => {
+    // Keep `passed` so the form can say "your pass stays in" while editing.
     setSubmittedAmount(null);
     setAmountRaw("");
     setIsEditing(true);
@@ -88,11 +110,13 @@ export function useBidForm({ socket, lotId, minBid, budget, hasServerBid }: Opti
     amount,
     error,
     submittedAmount,
+    lockedIn: passed ? "pass" : submittedAmount !== null ? "bid" : "unknown",
     hasBid: hasServerBid,
-    isSubmitted: !isEditing && (hasServerBid || submittedAmount !== null),
+    isSubmitted: !isEditing && (hasServerBid || submittedAmount !== null || passed),
     previousBidStands: isEditing && hasServerBid,
     setAmount,
     submit,
+    pass,
     change,
   };
 }

@@ -27,7 +27,8 @@ function closeInitialLot(state: DraftState, lot: Lot, ctx: Ctx): ReduceResult {
     nextState.settings.revealTopN,
   );
   const winnerTeamId = winners.length === 1 ? (winners[0] as string) : null;
-  const revealEvent: Event = { type: "lot:reveal", lotId: lot.id, bids: revealedBids, winnerTeamId };
+  const passes = state.bids.filter((b) => b.lotId === lot.id && b.tieRound === 0 && !b.superseded && b.pass).length;
+  const revealEvent: Event = { type: "lot:reveal", lotId: lot.id, bids: revealedBids, winnerTeamId, passes };
 
   if (allBids.length === 0) {
     const revealedLot: Lot = { ...closedLot, state: "revealed" };

@@ -1,0 +1,1 @@
+ALTER TABLE "bid" ADD COLUMN "pass" boolean DEFAULT false NOT NULL;

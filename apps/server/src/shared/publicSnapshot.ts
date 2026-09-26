@@ -10,6 +10,8 @@ export type PublicBid = {
   hasBid: true;
   /** Only present once this exact bid has been revealed to everyone — see the engine's revealedBidIds. */
   amount?: number;
+  // Deliberately no `pass` field: a pass looks exactly like a bid to everyone
+  // (the reveal only broadcasts how many teams passed, never who).
 };
 
 export type PublicDraftSnapshot = Omit<DraftState, "bids"> & { bids: PublicBid[] };

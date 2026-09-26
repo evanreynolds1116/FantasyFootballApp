@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildServer } from "../src/buildServer.js";
-import { player } from "../src/db/schema.js";
+import { bid, player } from "../src/db/schema.js";
 import {
   addPlayers,
   claimTeam,
@@ -186,6 +186,62 @@ describe("bid secrecy (network level)", () => {
       const lotBids = (await snapshot).bids.filter((b) => b.lotId === lotId);
       expect(lotBids).toHaveLength(3);
       expect(lotBids.filter((b) => b.amount !== undefined).map((b) => b.amount)).toEqual([50]);
+    } finally {
+      sockets.forEach((s) => s.disconnect());
+      await cleanupLeague(app.db, created.leagueId, users.map((u) => u.userId));
+    }
+  });
+
+  it("a pass is broadcast exactly like a bid, closes the lot early, and is revealed only as a count", async () => {
+    const users = await Promise.all(["Commish3", "A3", "B3", "C3"].map((n) => createDevSession(baseUrl, n)));
+    const created = await createLeague(baseUrl, users[0]!.token, {
+      name: "Pass Secrecy League",
+      settings: { auctionSpots: 1, rosterSize: 1, positionGroups: null, earlyClose: true },
+      teams: [{ name: "A" }, { name: "B" }, { name: "C" }],
+    });
+    const sockets = [] as ReturnType<typeof connectSocket>[];
+    try {
+      for (let i = 0; i < 3; i++) await claimTeam(app, created.teams[i]!.id, users[i + 1]!.userId);
+      await addPlayers(baseUrl, users[0]!.token, created.leagueId, [1, 2, 3].map((n) => ({ name: `Passable ${n}`, position: "QB" })));
+      const rows = await app.db.select({ id: player.id }).from(player).where(eq(player.leagueId, created.leagueId));
+      const { draftId } = await createDraftForLeague(baseUrl, users[0]!.token, created.leagueId);
+      for (const u of users) {
+        const s = connectSocket(baseUrl, u.token);
+        sockets.push(s);
+        await waitForConnect(s);
+        await joinDraft(s, draftId);
+      }
+      const [commishSock, sa, sb, sc] = sockets as [ReturnType<typeof connectSocket>, ReturnType<typeof connectSocket>, ReturnType<typeof connectSocket>, ReturnType<typeof connectSocket>];
+      await emitIntent(commishSock, "admin:start", {});
+      const lotOpen = waitForEvent<{ lotId: string }>(commishSock, "lot:open");
+      for (const [i, s] of [sa, sb, sc].entries()) await emitIntent(s, "nominate", { playerId: rows[i]!.id });
+      const { lotId } = await lotOpen;
+
+      const statuses: { event: string; payload: Record<string, unknown> }[] = [];
+      sc.onAny((event: string, payload: Record<string, unknown>) => statuses.push({ event, payload }));
+      await emitIntent(sa, "bid:submit", { lotId, amount: 20 });
+      const closing = waitForEvent(commishSock, "lot:closing");
+      const reveal = waitForEvent<{ bids: { amount: number }[]; passes: number }>(commishSock, "lot:reveal");
+      expect(await emitIntent(sb, "bid:pass", { lotId })).toEqual({ ok: true });
+      expect(await emitIntent(sc, "bid:pass", { lotId })).toEqual({ ok: true });
+      await closing; // everyone is in, so the lot closes early
+
+      const bidStatus = statuses.filter((e) => e.event === "lot:bidStatus").map((e) => e.payload);
+      expect(bidStatus).toHaveLength(3); // A's bid, B's pass and C's own pass — all identical in shape
+      for (const p of bidStatus) expect(Object.keys(p).sort()).toEqual(["hasBid", "lotId", "teamId", "type", "version"]);
+
+      const revealed = await reveal;
+      expect(revealed.bids.map((b) => b.amount)).toEqual([20]);
+      expect(revealed.passes).toBe(2);
+
+      const snapshot = new Promise<{ bids: Record<string, unknown>[] }>((r) => sc.once("state:snapshot", r));
+      sc.emit("resync", {}, () => {});
+      const lotBids = (await snapshot).bids.filter((b) => b.lotId === lotId);
+      expect(lotBids).toHaveLength(3);
+      for (const b of lotBids) expect(b).not.toHaveProperty("pass");
+
+      const stored = await app.db.select({ pass: bid.pass }).from(bid).where(eq(bid.lotId, lotId));
+      expect(stored.filter((r) => r.pass)).toHaveLength(2);
     } finally {
       sockets.forEach((s) => s.disconnect());
       await cleanupLeague(app.db, created.leagueId, users.map((u) => u.userId));

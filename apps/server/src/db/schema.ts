@@ -224,6 +224,8 @@ export const bid = pgTable(
     amount: integer("amount").notNull(),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
     superseded: boolean("superseded").notNull().default(false),
+    /** A locked-in pass (amount stored as 0) — never a bid when the lot is decided. */
+    pass: boolean("pass").notNull().default(false),
   },
   (t) => [
     primaryKey({ columns: [t.draftId, t.id] }),

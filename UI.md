@@ -55,21 +55,21 @@ The same screens and rules on every device; only the layout changes.
 - Player card with a countdown ring and time left.
 - Three stat tiles: budget left, auction spots filled, your count at this player's position vs its max.
 - Amount field (display font, amber border) with "Min $5 · max $[budget]".
-- 3×4 keypad: 1–9, Clear, 0, Delete. Large amber "Lock in sealed bid" button.
+- 3×4 keypad: 1–9, Clear, 0, Delete. Large amber "Lock in sealed bid" button with an outlined "Pass" button beside it (locks you in without bidding; looks like a bid to everyone else).
 - Client-side hints for under-minimum and over-budget; the server's error code is still the final word (`BID_TOO_LOW`, `OVER_BUDGET`, `POSITION_LIMIT`, `LOT_CLOSED`).
-- After submitting: green "Your bid is in and hidden" panel showing your amount and a "Change bid" button until the clock ends.
-- Bottom strip: "N of M have bid" and one tile per team — solid amber with the number if they've bid, dashed if not, dimmed "out" if not eligible for this lot. Never an amount.
+- After submitting: green "Your bid is in and hidden" panel showing your amount (or "You passed on this player" / "Pass") and a "Change bid / pass" button until the clock ends.
+- Bottom strip: "N of M are in" and one tile per team — solid amber with the number if they've bid or passed (the two look identical), dashed if not, dimmed "out" if not eligible for this lot. Never an amount.
 - Not eligible (full, broke, or at position max): keypad disabled with the reason.
 
 ### 2b. Bid — laptop (`BidLaptop.dc.html`, working prototype)
 - Left: this round's lots — sold ones dimmed with winner and price, live one highlighted, the next one marked.
-- Middle: player card with countdown ring; typed bid field with "Lock in bid" button and "Type an amount and press Enter"; the same submitted state and bid-status strip as phone; your roster panel (auction spots used, money spent, count at this position).
+- Middle: player card with countdown ring; typed bid field with "Lock in bid" and "Pass" buttons and "Type an amount and press Enter"; the same submitted state and bid-status strip as phone; your roster panel (auction spots used, money spent, count at this position).
 - Right: every team's max bid, spots filled and count at the live lot's position; teams that can't bid on this player are greyed with the reason; your row highlighted; broke teams in warn color.
 
 ### 3. Reveal (`Reveal.dc.html`)
 - All screens flip at the same moment on `lot:reveal`.
 - Amber winner card: team number and name, price in large display type.
-- Runner-up rows as allowed by the reveal setting (default 2), then "N other bids stay hidden".
+- Runner-up rows as allowed by the reveal setting (default 2), then "N other bids stay hidden" and "N teams passed" (a count, never who).
 - Tiles showing the winner's budget before → after and auction spots now filled.
 - "Up next" card with the next lot and a short countdown.
 
@@ -101,7 +101,7 @@ The same screens and rules on every device; only the layout changes.
 ### 7. Big board — TV (`BigBoard.dc.html`)
 - Header: league name and draft; phase, round, "Lot X of Y".
 - Live lot: position chip, player name very large, who nominated, and a very large clock.
-- "N of M have bid" strip with one tile per team, same meaning as the phone strip; ineligible teams show "out".
+- "N of M are in" strip with one tile per team, same meaning as the phone strip; ineligible teams show "out".
 - Round lots grid (6 per row): every lot in this round — sold (dimmed, winner and price), bidding now (amber), up next (amber outline), upcoming (player, position, nominator). Note any team that skipped nominating (full or broke) and the next round's direction.
 - Right column: every team's money left and auction spots filled; broke teams in warn color with "broke".
 - During reveals it shows the reveal card; during a break, a full-screen break countdown; in the snake phase, the snake board with the team on the clock.

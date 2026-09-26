@@ -31,26 +31,49 @@ export function applyBidSubmit(state: DraftState, action: Extract<Action, { type
     return reject(state, action, "OVER_BUDGET", "Bid exceeds remaining budget.");
   }
 
+  return lockIn(state, lot, action.teamId, action.amount, false, ctx);
+}
+
+/**
+ * A pass (opening sealed round only): locks the team in as "no bid" so the
+ * lot can close early once everyone is in. It supersedes the team's current
+ * bid (and a later bid supersedes it) exactly like changing a bid. To every
+ * other client it looks identical to a bid — the same lot:bidStatus
+ * hasBid:true — so it gives nothing away before the reveal.
+ */
+export function applyBidPass(state: DraftState, action: Extract<Action, { type: "bid:pass" }>, ctx: Ctx): ReduceResult {
+  const lot = state.lots.find((l) => l.id === action.lotId);
+  if (!lot || lot.state !== "open" || (lot.endsAt !== null && ctx.now >= lot.endsAt)) {
+    return reject(state, action, "LOT_CLOSED", "This lot is not open for bidding.");
+  }
+  if (!lot.eligibleTeamIds.includes(action.teamId)) {
+    return reject(state, action, "NOT_ELIGIBLE", "This team is not eligible to bid on this lot.");
+  }
+  return lockIn(state, lot, action.teamId, 0, true, ctx);
+}
+
+function lockIn(state: DraftState, lot: Lot, teamId: string, amount: number, pass: boolean, ctx: Ctx): ReduceResult {
   const hadAllBid = allEligibleHaveBid(state, lot);
 
   const { id, state: withId } = allocateId(state, "bid");
   const supersededBids = withId.bids.map((b) =>
-    b.lotId === lot.id && b.teamId === action.teamId && b.tieRound === lot.tieRound && !b.superseded
+    b.lotId === lot.id && b.teamId === teamId && b.tieRound === lot.tieRound && !b.superseded
       ? { ...b, superseded: true }
       : b,
   );
   const newBid: Bid = {
     id,
     lotId: lot.id,
-    teamId: action.teamId,
+    teamId,
     tieRound: lot.tieRound,
-    amount: action.amount,
+    amount,
     receivedAt: ctx.now,
     superseded: false,
+    ...(pass ? { pass: true } : {}),
   };
 
   let nextLot = lot;
-  const events: Event[] = [{ type: "lot:bidStatus", lotId: lot.id, teamId: action.teamId, hasBid: true }];
+  const events: Event[] = [{ type: "lot:bidStatus", lotId: lot.id, teamId, hasBid: true }];
 
   let nextState = bumpVersion({ ...withId, bids: [...supersededBids, newBid] });
 

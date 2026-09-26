@@ -36,7 +36,9 @@ export function draftLog(snapshot: DraftSnapshot): LogEntry[] {
         .filter((b) => b.teamId !== pick.teamId)
         .map((b) => ({ teamNumber: teamById.get(b.teamId)?.draftNumber ?? 0, amount: b.amount as number }))
         .sort((a, b) => b.amount - a.amount);
-      const hadAnyBid = lot ? snapshot.bids.some((b) => b.lotId === lot.id) : true;
+      // A winning bid is always revealed (reveal shows at least the winner), so no revealed opening
+      // amounts means nobody bid — even if the lot has pass rows, which look like hidden bids.
+      const hadAnyBid = lot ? openingBids.length > 0 : true;
 
       let note = "";
       if (pick.source === "auto") note = "auto-pick";

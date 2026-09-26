@@ -43,6 +43,13 @@
       "when": 1790435430096,
       "tag": "0005_lot_reveal_top_n",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790438499902,
+      "tag": "0006_bid_pass",
+      "breakpoints": true
     }
   ]
 }

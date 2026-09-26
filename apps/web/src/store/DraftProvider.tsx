@@ -25,7 +25,7 @@ type RawSnapshot = Omit<DraftSnapshot, "myTeamId" | "isCommissioner" | "connecte
   isCommissioner?: boolean;
   connectedTeamIds?: string[];
 };
-type RawReveal = { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null };
+type RawReveal = { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null; passes?: number };
 type RawTieRevealed = { lotId: string; tieRound: number; bids: RevealedBid[] };
 type RawAwarded = { lotId: string; teamId: string; playerId: string; price: number };
 
@@ -60,10 +60,10 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     // skipping straight to the next screen.
     let lastTieReveal: { lotId: string; bids: RevealedBid[] } | null = null;
 
-    const armReveal = (payload: { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null }) => {
+    const armReveal = (payload: { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null; passes?: number }) => {
       if (revealTimeout) clearTimeout(revealTimeout);
       const until = Date.now() + REVEAL_DISPLAY_MS;
-      setReveal({ ...payload, until });
+      setReveal({ ...payload, passes: payload.passes ?? 0, until });
       revealTimeout = setTimeout(() => setReveal(null), REVEAL_DISPLAY_MS);
     };
 

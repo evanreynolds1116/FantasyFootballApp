@@ -25,7 +25,7 @@ export type Event =
   | { type: "lot:open"; lotId: LotId; playerId: PlayerId; eligibleTeamIds: TeamId[]; endsAt: number | null }
   | { type: "lot:bidStatus"; lotId: LotId; teamId: TeamId; hasBid: boolean }
   | { type: "lot:closing"; lotId: LotId; endsAt: number }
-  | { type: "lot:reveal"; lotId: LotId; bids: RevealedBid[]; winnerTeamId: TeamId | null }
+  | { type: "lot:reveal"; lotId: LotId; bids: RevealedBid[]; winnerTeamId: TeamId | null; /** How many teams passed — a count only, never who. */ passes: number }
   | {
       type: "lot:tie";
       lotId: LotId;

@@ -64,9 +64,16 @@ export type Bid = {
   teamId: TeamId;
   /** 0 for the initial sealed bid, 1+ for tie rebids. */
   tieRound: number;
+  /** 0 for a pass. */
   amount: number;
   receivedAt: number;
   superseded: boolean;
+  /**
+   * A locked-in "no bid" on the opening sealed round: counts as in for early
+   * close and can be changed like any bid, but is never a bid when the lot
+   * is decided. Absent/false for real bids.
+   */
+  pass?: boolean;
 };
 
 export type PickSource = "auction" | "snake" | "makeup" | "auto";

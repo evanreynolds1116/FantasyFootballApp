@@ -37,7 +37,17 @@ function snapshot(): DraftSnapshot {
     phase: "complete",
     lots: [lot("L1", "p1", "t2", 120), lot("L2", "p2", "t1", 60, 2), { ...lot("L3", "p4", "t3", 5), nominatedByTeamId: "t3" }],
     // L1: winner + one revealed runner-up; t3's bid stayed hidden (no amount in the snapshot).
-    bids: [bid("L1", "t2", 120), bid("L1", "t1", 100), bid("L1", "t3", undefined), bid("L2", "t1", 50), bid("L2", "t3", 50), bid("L2", "t1", 60, 1)],
+    // L3: everyone passed — pass rows look like hidden bids (no amount).
+    bids: [
+      bid("L1", "t2", 120),
+      bid("L1", "t1", 100),
+      bid("L1", "t3", undefined),
+      bid("L2", "t1", 50),
+      bid("L2", "t3", 50),
+      bid("L2", "t1", 60, 1),
+      bid("L3", "t1", undefined),
+      bid("L3", "t2", undefined),
+    ],
     picks: [pick(2, "t1", "p2", "auction", 1, 60), pick(1, "t2", "p1", "auction", 1, 120), pick(3, "t3", "p4", "auction", 1, 5), pick(4, "t3", "p3", "auto", 2, null)],
     myTeamId: null,
     isCommissioner: false,

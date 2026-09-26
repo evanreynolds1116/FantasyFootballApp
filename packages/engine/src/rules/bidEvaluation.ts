@@ -16,7 +16,8 @@ export function effectiveBidAmount(
     const bid = state.bids.find(
       (b) => b.lotId === lot.id && b.teamId === teamId && b.tieRound === round && !b.superseded,
     );
-    if (bid) return bid.amount;
+    // A pass is a standing "no bid" — it never competes.
+    if (bid) return bid.pass ? null : bid.amount;
   }
   return null;
 }

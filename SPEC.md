@@ -62,7 +62,7 @@ Clock lengths and the reveal setting can be changed mid-draft (see Pausing and c
 1. Draft order is set by team number (1–N), assigned randomly or by the commissioner.
 2. Nominations snake across rounds: round 1 goes team 1 → 12, round 2 goes 12 → 1, round 3 goes 1 → 12 again, and so on. Each eligible team nominates one available player. Eligible = has an open auction spot and can still afford the minimum bid. Teams with all 8 auction spots filled stop nominating.
 3. When all nominations for the round are in, the lots are bid on one at a time, in nomination order.
-4. For each lot, every eligible team may submit one sealed bid (they can change it until the clock ends). The nominator is not required to bid. Bids must be at least the minimum bid, a multiple of the bid step, no more than the team's remaining budget, and must not push the team past a position maximum (e.g. a team with 2 QBs can't bid on a QB).
+4. For each lot, every eligible team may submit one sealed bid (they can change it until the clock ends). The nominator is not required to bid. Bids must be at least the minimum bid, a multiple of the bid step, no more than the team's remaining budget, and must not push the team past a position maximum (e.g. a team with 2 QBs can't bid on a QB). Instead of bidding, a team may **Pass**: it locks the team in without a bid so the lot can close early, can be changed to a bid (or back) until the clock ends, and looks exactly like a bid to everyone else until the reveal. A pass is never a bid — if every team passes, the "no bids" rule below applies (the nominator included). Pass is available in the opening sealed round only, not in tie re-bid rounds.
 5. When the clock hits zero (or everyone has bid, if early close is on), bids lock and reveal simultaneously, showing the winner plus as many runner-up bids as the reveal setting allows. The highest bid wins; the amount comes off the winner's budget and the player fills one of their auction spots.
 6. **Tie:** only the teams tied for the top bid re-bid, and everyone sees the re-bid amounts after each round. Each new bid must beat that team's own previous bid by at least the minimum tie raise ($5) and stay within budget. Only teams still tied at the new top bid continue (re-bids of $250, $250 and $220 leave just the two $250 teams), and this repeats until there is one winner. The fallback only applies if the commissioner sets a round limit, or if every tied team is already all-in and can't raise.
 7. **No bids:** by default the nominator gets the player at the minimum bid; if the nominator's auction spots are already full (they filled up earlier in the round), or the award would break their position maximum, the player goes back into the pool. The commissioner can instead choose "always return to pool".
@@ -95,7 +95,7 @@ Clock lengths and the reveal setting can be changed mid-draft (see Pausing and c
 
 1. On the clock: the nominating team's screen shows "Nominate a player" with search; others see who is nominating.
 2. Nominations fill a round list in order; once all are in, lot 1 opens.
-3. Bid screen: player card, your remaining budget and max bid, a number pad, Submit / Change. A strip shows which teams have submitted (never amounts).
+3. Bid screen: player card, your remaining budget and max bid, a number pad, Submit / Pass / Change. A strip shows which teams are in (never amounts, and a pass looks the same as a bid).
 4. Timer expires → bids flip at once on every screen (winner + as many runner-ups as the reveal setting allows), winner highlighted, budgets and rosters update.
 5. Tie → tied teams get a re-bid prompt showing their minimum allowed amount; everyone else sees "Tie-break in progress", then every re-bid amount.
 6. Next lot; after the last lot, the next nomination round begins (reversed order).
@@ -119,7 +119,7 @@ Final rosters, spend per team and a full pick/bid log, exportable as CSV, a shar
 | FR-03 | Draft order: random shuffle or manual assignment of team numbers | Must |
 | FR-04 | Player pool imported from MyFantasyLeague's player export, searchable by name, position, NFL team; manual add/edit | Must |
 | FR-05 | Nomination order snakes across auction rounds (1→12, 12→1); only available players; skip teams that are full or broke | Must |
-| FR-06 | Sealed bids: one active bid per team per lot, editable until close, validated against min bid, bid step, remaining budget and position max | Must |
+| FR-06 | Sealed bids: one active bid or pass per team per lot, editable until close, bids validated against min bid, bid step, remaining budget and position max; a pass is indistinguishable from a bid before reveal | Must |
 | FR-07 | Bid amounts are never sent to any client (commissioner included) before reveal; clients only see submitted/not submitted per team | Must |
 | FR-08 | Server-controlled bid clock; bids received after close are rejected | Must |
 | FR-09 | Simultaneous reveal of the winner plus the configured number of runner-up bids (default top 3); award, budget and roster updated atomically | Must |
@@ -169,13 +169,13 @@ stateDiagram-v2
 
 - On open, the server writes `endsAt = now + bidClock` and broadcasts it. Clients show a countdown using a measured server-time offset (sync on connect and every 30 s).
 - A server-side scheduled job closes the lot at `endsAt`. Bids are accepted only if the server receives them before `endsAt`; no grace period, and the rejection reason is shown.
-- Early close (setting): when every eligible team has submitted, the lot closes after a 3-second "last chance" countdown.
+- Early close (setting): when every eligible team has submitted a bid or passed, the lot closes after a 3-second "last chance" countdown.
 - Pause stores `remainingMs`; resume sets a new `endsAt = now + remainingMs`.
 - The commissioner can add 15 s to the current clock.
 
 **Sealed-bid rules**
 
-- A bid is an upsert keyed by (lot, team, tie round); the latest one before close counts.
+- A bid is an upsert keyed by (lot, team, tie round); the latest one before close counts. A pass is the same kind of entry with no amount, so bid → pass → bid just replaces it.
 - Server validation: team eligible, amount ≥ minimum bid, multiple of the bid step, ≤ remaining budget, within position maximums, and on a tie re-bid, ≥ that team's previous bid + the minimum tie raise.
 - Amounts are stored server-side only and never shown to anyone before reveal — including the commissioner, who is usually drafting too. The only pre-reveal broadcast is `{teamId, hasBid: true}`.
 - Reveal sends only what the reveal setting allows (default: winner + next two bids, with team names), in one message, so all screens flip together; hidden losing bids never leave the server. Tie re-bid amounts are always revealed in full. The audit log keeps every bid.
@@ -275,6 +275,7 @@ Every server message carries the draft `version` so a client that misses a messa
 | --- | --- | --- |
 | `nominate` | playerId | Team on the clock |
 | `bid:submit` | lotId, amount | Eligible team |
+| `bid:pass` | lotId | Eligible team (opening round only) |
 | `pick:make` | playerId | Team on the clock |
 | `queue:update` | playerIds[] | Any manager |
 | `admin:start` / `admin:pause` / `admin:resume` | — | Commissioner |
@@ -296,7 +297,7 @@ Every intent gets an acknowledgement: `ok` or an error code (`BID_TOO_LOW`, `OVE
 | `lot:open` | lotId, player, eligibleTeamIds, endsAt | |
 | `lot:bidStatus` | teamId, hasBid | Never includes amount |
 | `lot:closing` | endsAt (3-s last chance) | Early close only |
-| `lot:reveal` | winner + top-N bids per reveal setting; tie re-bids in full | Sent once, to everyone |
+| `lot:reveal` | winner + top-N bids per reveal setting; tie re-bids in full; number of passes (never who) | Sent once, to everyone |
 | `lot:tie` | tiedTeamIds, minBidPerTeam, tieRound, endsAt | |
 | `lot:awarded` | winner, price, updated budget and roster | |
 | `lot:returned` | playerId | No-bid return to pool |
@@ -315,7 +316,7 @@ Every intent gets an acknowledgement: `ok` or an error code (`BID_TOO_LOW`, `OVE
 | Lobby | Everyone | Teams joined / ready, draft order, invite link, start button (commissioner) |
 | Nominate | Team on the clock | Player search + filters, watchlist, nomination clock; others see "Team 4 is nominating…" |
 | Round queue | Everyone | This round's nominated players in bidding order, which lot is live |
-| Bid | Eligible managers | Player card, countdown ring, your budget / max bid / spots left, number pad, Submit / Change, "8 of 12 have bid" strip; disabled with reason if not eligible |
+| Bid | Eligible managers | Player card, countdown ring, your budget / max bid / spots left, number pad, Submit / Pass / Change, "8 of 12 are in" strip; disabled with reason if not eligible |
 | Reveal | Everyone | Winner and configured runner-up bids flip together, high to low, winner banner; tie prompt for tied teams |
 | Snake board | Everyone | Grid of rounds × teams, on-the-clock highlight, pick clock, available players + your queue |
 | Rosters & budgets | Everyone | Per-team roster by position, money left, max bid, auction spots left, broke flag |

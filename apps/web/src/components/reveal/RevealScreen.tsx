@@ -25,7 +25,8 @@ export function RevealScreen({ reveal }: { reveal: RevealPayload }) {
   const teamById = new Map(snapshot.teams.map((t) => [t.id, t]));
 
   const totalBidCount = snapshot.bids.filter((b) => b.lotId === reveal.lotId && !b.superseded).length;
-  const hiddenCount = Math.max(0, totalBidCount - reveal.bids.length);
+  // Passes are locked-in entries too, but they aren't bids — they're reported as a count of their own.
+  const hiddenCount = Math.max(0, totalBidCount - reveal.bids.length - reveal.passes);
 
   const winner = reveal.winnerTeamId ? teamById.get(reveal.winnerTeamId) : undefined;
   const winnerPrice = lot?.price ?? reveal.bids.find((b) => b.teamId === reveal.winnerTeamId)?.amount ?? null;
@@ -109,9 +110,10 @@ export function RevealScreen({ reveal }: { reveal: RevealPayload }) {
           })}
         </div>
       )}
-      {hiddenCount > 0 && (
+      {(hiddenCount > 0 || reveal.passes > 0) && (
         <div className="text-sm text-muted">
-          {hiddenCount} other bid{hiddenCount === 1 ? "" : "s"} stay{hiddenCount === 1 ? "s" : ""} hidden. The commissioner chooses how many are shown.
+          {hiddenCount > 0 && `${hiddenCount} other bid${hiddenCount === 1 ? "" : "s"} stay${hiddenCount === 1 ? "s" : ""} hidden. The commissioner chooses how many are shown. `}
+          {reveal.passes > 0 && `${reveal.passes} team${reveal.passes === 1 ? "" : "s"} passed.`}
         </div>
       )}
 

@@ -57,7 +57,7 @@ export function BidScreenPhone(props: Props) {
       </div>
 
       {form.isSubmitted ? (
-        <SubmittedBidPanel amount={form.submittedAmount} onChange={form.change} size="phone" />
+        <SubmittedBidPanel amount={form.submittedAmount} lockedIn={form.lockedIn} onChange={form.change} size="phone" />
       ) : (
         <BidAmountFieldPhone form={form} minBid={minBid} budget={budget} disabled={disabled} disabledReason={disabledReason} />
       )}

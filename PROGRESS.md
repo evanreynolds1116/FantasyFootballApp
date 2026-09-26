@@ -3,7 +3,8 @@
 Last updated 2026-09-26, after the session that built the Commissioner console,
 Rosters & budgets, League setup and the Lobby, then ran full-length scripted
 mock drafts and fixed what they found (make-up screen, results screen, bid
-secrecy, make-up turn order, a server crash, persistence latency).
+secrecy, make-up turn order, a server crash, persistence latency), added a
+Pass option to auction bidding, and wrote the README.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -11,12 +12,12 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-198 tests, full 12-team scripted draft acceptance test. Committed.
+205 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests (now 32) including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 33) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
 **Phase 3 — UI (`apps/web`)**: every screen in SPEC's table is built and
@@ -25,7 +26,9 @@ verified in headless Chrome against a live server, including the pre-draft flow
 works through the UI alone, and two full-length 12-team scripted mock drafts
 (see "Mock draft runs" below) have finished clean. SPEC's phase-3 "done when" —
 friends complete a mock draft on phones — hasn't happened yet. Committed
-(`597aa7a`, `49b5083`, `dcc84c4`, `b09770d`, plus the mock-draft fixes commit).
+(`597aa7a`, `49b5083`, `dcc84c4`, `b09770d`, `cdcbc16`, plus the Pass + README
+commit). [README.md](README.md) walks through every screen, the rules, the
+architecture, the stack, setup and the API.
 
 ## What's actually built and working in apps/web
 
@@ -211,6 +214,30 @@ Mock-draft session (fixes found by full-length scripted runs):
   join/resync instead of querying per intent. Ack latency: single action
   ~320 ms → ~58 ms; 12 simultaneous bids, slowest ack 3.4 s → 0.7 s.
 
+Pass session (user's feature request, 2026-09-26):
+- **Pass in the opening sealed round.** A team can lock in "no bid"
+  (`bid:pass` intent, engine `applyBidPass`) so the lot can close early; it
+  can switch pass ↔ bid until the clock ends. Stored as a bid row with
+  `pass: true`, amount 0 (column `bid.pass`, migration `0006`); the engine's
+  `effectiveBidAmount` treats it as no bid, so it never competes.
+- User's decisions: a pass looks exactly like a bid before the reveal (same
+  `lot:bidStatus`, no `pass` field ever sent to clients); if everyone passes
+  the normal no-bid rule applies (nominator included); opening round only —
+  refused in tie re-bid rounds; the reveal shows a pass *count* only
+  (`lot:reveal.passes`), never who.
+- UI: Pass button beside Lock in (phone and laptop), "You passed on this
+  player" / "Change bid / pass", "N teams passed" on the reveal. The status
+  strip now says "N of M are in" instead of "have bid" (passes count as in);
+  SPEC.md and UI.md updated to match.
+- The results log's "no bids, nominator" note now keys off "no revealed
+  opening amounts" (a winning bid is always revealed), since pass rows look
+  like hidden bids in the snapshot.
+- After a refresh mid-lot your own screen can't tell whether you bid or
+  passed (the server tells no one), so it shows "You're locked in and
+  hidden" — same reason your own amount wasn't recoverable before.
+- The mock-draft bots still "pass" by not bidding; switch them to `bid:pass`
+  next time the script is run, to see the early-close speed-up.
+
 ## Known, intentional gaps (not bugs — flagged as they came up)
 
 - **Pre-draft gaps:** no team avatars (optional in FR-02), no "mock round"
@@ -288,7 +315,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the mock-draft fixes commit. Note `pnpm run typecheck`
+  packages as of the Pass + README commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with

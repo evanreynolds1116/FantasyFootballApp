@@ -28,9 +28,18 @@ export function BidAmountFieldLaptop({ form, minBid, budget, disabled, disabledR
         <button
           type="submit"
           disabled={disabled}
-          className="w-60 rounded-panel bg-accent text-lg font-bold uppercase tracking-[0.04em] text-on-accent disabled:opacity-40"
+          className="w-52 rounded-panel bg-accent text-lg font-bold uppercase tracking-[0.04em] text-on-accent disabled:opacity-40"
         >
           Lock in bid
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => void form.pass()}
+          title="Lock in without bidding so the lot can close sooner. Nobody can tell a pass from a bid."
+          className="w-28 rounded-panel border border-line text-lg font-bold uppercase tracking-[0.04em] disabled:opacity-40"
+        >
+          Pass
         </button>
       </div>
       <div className="flex justify-between text-sm text-muted">
@@ -42,7 +51,9 @@ export function BidAmountFieldLaptop({ form, minBid, budget, disabled, disabledR
             {form.error}
           </span>
         )}
-        {!form.error && form.previousBidStands && <span>Your previous bid stays in if you don&apos;t submit a new one before the clock ends.</span>}
+        {!form.error && form.previousBidStands && (
+          <span>Your previous {form.lockedIn === "pass" ? "pass" : "bid"} stays in if you don&apos;t submit a new one before the clock ends.</span>
+        )}
         {!form.error && !form.previousBidStands && disabled && disabledReason && <span className="font-semibold text-warn">{disabledReason}</span>}
       </div>
     </form>
