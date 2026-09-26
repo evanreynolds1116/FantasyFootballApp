@@ -1,7 +1,7 @@
 # Progress notes — read this first when picking the project back up
 
-Last updated 2026-09-26, after the session that built the Commissioner console
-and fixed undo to match SPEC.
+Last updated 2026-09-26, after the session that built the Commissioner console,
+fixed undo to match SPEC, and built Rosters & budgets.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -17,9 +17,10 @@ Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
 tests (now 23) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
-**Phase 3 — UI (`apps/web`)**: in progress. Seven of the ~9 draft-day screens
-are built and manually verified against a live server. Committed (`597aa7a`,
-plus the Commissioner console commit).
+**Phase 3 — UI (`apps/web`)**: in progress. Every draft-day screen is built
+and manually verified against a live server; what's missing is the pre-draft
+flow (League setup + Lobby). Committed (`597aa7a`, `49b5083`, plus the Rosters
+& budgets commit).
 
 ## What's actually built and working in apps/web
 
@@ -67,6 +68,18 @@ plus the Commissioner console commit).
   decides", and who's connected. Verified in headless Chrome against a live
   server. Pure text helpers are unit-tested (`consoleText.test.ts` — the first
   `apps/web` tests; `pnpm test` now runs them).
+- **Rosters & budgets** (`components/rosters/`, route
+  `/draft/:draftId/rosters`, "Rosters" link in the draft header for everyone)
+  — all-teams table (money left, max bid, auction spots left, roster count;
+  "You"/"Broke" on their own line under the name so truncation never leaves
+  broke as color-only) plus one team's roster by position group with counts
+  vs limits and how each player was acquired. No mockup exists for this
+  screen; it follows the existing team panels' style. Data helpers in
+  `rosterData.ts` are unit-tested. Verified in headless Chrome at phone and
+  laptop widths, including a live update while open.
+- `routes/DraftSubpage.tsx` is the shared frame (back link, connection badge,
+  paused banner, own socket) for secondary screens — the console and rosters
+  both use it.
 
 Every screen reuses `@draft-app/engine`'s own selectors (`remainingBudget`,
 `canBidOnPlayer`, `wouldExceedPositionMax`, `positionGroupCount`,
@@ -134,8 +147,12 @@ Commissioner-console session:
   reveals bid amounts back to anyone before a lot resolves, not even the
   bidder, so "Your bid is in" shows `•••` instead of a remembered number after
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
-- **Almost no automated frontend tests.** Only the console's text helpers
-  are unit-tested; screens are verified by hand. No Playwright suite yet.
+- **Few automated frontend tests.** Only pure helpers (console text, roster
+  data) are unit-tested; screens are verified by hand. No Playwright suite yet.
+- **The big board has no Rosters view** — it's a separate spectator route and
+  only shows the teams overview column. Rosters & budgets needs a login.
+- **A browser console 404 on every page load** during headless checks; its
+  source wasn't tracked down (likely a missing favicon — unverified).
 - **Undo doesn't roll back a phase change.** Undoing the award that ended the
   auction leaves the draft in the snake. SPEC is silent; not handled.
 - **Undoing a snake pick doesn't pause** and doesn't give the team its turn
@@ -147,17 +164,13 @@ Commissioner-console session:
 
 ## What's left
 
-In the order SPEC.md's screen table lists them, minus what's done:
-1. **Rosters & budgets** — next up — SPEC lists this as its own "everyone" screen
-   (per-team roster by position, money left, max bid, spots left, broke flag).
-   Right now this info only exists embedded in Bid's laptop panels and the big
-   board — no standalone view.
-2. **League setup + Lobby** — the pre-draft flow. Bigger than the rest
+In rough priority order:
+1. **League setup + Lobby** — next up — the pre-draft flow. Bigger than the rest
    combined: settings form, invite link, team join/claim, draft order
    assignment, start button. Needed before this app is usable without me
    scripting the setup by hand.
-3. The console gaps listed above.
-4. Real auth, watchlist/queue, CSV export, settings-editing after creation —
+2. The console gaps listed above.
+3. Real auth, watchlist/queue, CSV export, settings-editing after creation —
    all previously deferred to phase 3/4, still deferred.
 
 ## How to pick this back up tomorrow
@@ -168,7 +181,7 @@ In the order SPEC.md's screen table lists them, minus what's done:
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the Commissioner console commit.
+  packages as of the Rosters & budgets commit.
 - Headless browser checks: Chrome is installed; `playwright-core` with
   `channel: "chrome"` works (install it in a scratch dir, not the repo).
 - There's still no claim-team route, so demo drafts need a direct

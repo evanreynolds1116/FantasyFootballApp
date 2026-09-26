@@ -2,7 +2,6 @@ import { currentLot } from "@draft-app/engine";
 import { useCountdown } from "../../lib/useCountdown";
 import { useDraft } from "../../store/DraftProvider";
 import { asEngineState } from "../../store/selectors";
-import { PausedBanner } from "../primitives/PausedBanner";
 import { ClockLengthsPanel } from "./ClockLengthsPanel";
 import { ConnectedTeamsPanel } from "./ConnectedTeamsPanel";
 import { ResolveTiePanel } from "./ResolveTiePanel";
@@ -75,8 +74,6 @@ export function CommissionerConsole() {
           )}
         </span>
       </div>
-
-      <PausedBanner paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt} />
 
       {snapshot.phase === "setup" && (
         <div className="flex flex-col gap-1.5">

@@ -20,6 +20,9 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <span className="font-display text-lg font-bold uppercase">Draft Day</span>
         <span className="flex items-center gap-4">
+          <Link to={`/draft/${draftId}/rosters`} className="text-sm font-semibold text-muted hover:text-text">
+            Rosters
+          </Link>
           {snapshot?.isCommissioner && (
             <Link to={`/draft/${draftId}/commish`} className="text-sm font-semibold text-accent">
               Commissioner

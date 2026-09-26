@@ -3,6 +3,7 @@ import { BoardRoute } from "./routes/BoardRoute";
 import { CommishRoute } from "./routes/CommishRoute";
 import { DraftRoute } from "./routes/DraftRoute";
 import { LoginRoute } from "./routes/LoginRoute";
+import { RostersRoute } from "./routes/RostersRoute";
 
 export function App() {
   return (
@@ -11,6 +12,7 @@ export function App() {
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/draft/:draftId" element={<DraftRoute />} />
       <Route path="/draft/:draftId/commish" element={<CommishRoute />} />
+      <Route path="/draft/:draftId/rosters" element={<RostersRoute />} />
       <Route path="/board/:draftId" element={<BoardRoute />} />
     </Routes>
   );
