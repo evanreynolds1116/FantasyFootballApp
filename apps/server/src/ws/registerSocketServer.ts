@@ -12,6 +12,8 @@ import { roomForDraft } from "./broadcastEvents.js";
 import { createPresence, type Presence } from "./presence.js";
 import type { SocketData } from "./types.js";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function getLeagueIdForDraft(db: Db, draftId: string): Promise<string | null> {
   const [row] = await db.select({ leagueId: draft.leagueId }).from(draft).where(eq(draft.id, draftId)).limit(1);
   return row?.leagueId ?? null;
@@ -31,6 +33,9 @@ async function emitSnapshot(socket: Socket, db: Db, runtime: EngineRuntime, pres
     isCommissioner(db, userId, leagueId),
     presence.connectedTeamIds(draftId, leagueId),
   ]);
+  const socketData = socket.data as SocketData;
+  socketData.teamId = myTeamId;
+  socketData.isCommissioner = commissioner;
   socket.emit("state:snapshot", { ...toPublicSnapshot(state), myTeamId, isCommissioner: commissioner, connectedTeamIds });
 }
 
@@ -43,9 +48,25 @@ export function registerSocketServer(httpServer: HttpServer, db: Db, runtime: En
     registerIntentHandlers(runtime, socket);
 
     socket.on("join", async (payload: { draftId?: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
+      // Everything a client sends here is untrusted: a malformed id or a
+      // failed query must come back as an error ack, never as an unhandled
+      // rejection — that would crash the process and end every draft on it.
+      try {
+        await handleJoin(payload, ack);
+      } catch (err) {
+        console.error("join failed", err);
+        ack?.({ ok: false, error: "SERVER_ERROR" });
+      }
+    });
+
+    const handleJoin = async (payload: { draftId?: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
       const draftId = payload?.draftId;
       if (!draftId) {
         ack?.({ ok: false, error: "MISSING_DRAFT_ID" });
+        return;
+      }
+      if (typeof draftId !== "string" || !UUID.test(draftId)) {
+        ack?.({ ok: false, error: "NOT_FOUND" });
         return;
       }
       const leagueId = await getLeagueIdForDraft(db, draftId);
@@ -77,7 +98,7 @@ export function registerSocketServer(httpServer: HttpServer, db: Db, runtime: En
 
       if (previous && previous.draftId !== draftId) await presence.broadcast(previous.draftId, previous.leagueId);
       await presence.broadcast(draftId, leagueId);
-    });
+    };
 
     socket.on("resync", async (_payload: unknown, ack?: (r: { ok: boolean }) => void) => {
       const draftId = (socket.data as SocketData).draftId;
@@ -86,8 +107,13 @@ export function registerSocketServer(httpServer: HttpServer, db: Db, runtime: En
         ack?.({ ok: false });
         return;
       }
-      await emitSnapshot(socket, db, runtime, presence, draftId, leagueId);
-      ack?.({ ok: true });
+      try {
+        await emitSnapshot(socket, db, runtime, presence, draftId, leagueId);
+        ack?.({ ok: true });
+      } catch (err) {
+        console.error("resync failed", err);
+        ack?.({ ok: false });
+      }
     });
 
     socket.on("disconnect", () => {

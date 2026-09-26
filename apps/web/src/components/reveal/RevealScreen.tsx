@@ -8,11 +8,9 @@ import { asEngineState } from "../../store/selectors";
  * "All screens flip at the same moment on lot:reveal" (UI.md) — one shared
  * layout for phone/laptop/board, since the mockups only designed a single
  * Reveal screen. Bid amounts here come ONLY from the `lot:reveal` event
- * payload passed in — never re-derived from a resynced snapshot, since a
- * resolved lot's bids become visible in the snapshot too (by design, once a
- * lot is terminal — see isBidVisible), but the revealTopN truncation the
- * server already applied to this event is what actually governs what's
- * shown here.
+ * payload passed in. The snapshot carries the same revealed amounts (and
+ * never the hidden ones — see the engine's revealedBidIds), but the event is
+ * what every screen flips on at the same moment.
  */
 export function RevealScreen({ reveal }: { reveal: RevealPayload }) {
   const { snapshot } = useDraft();

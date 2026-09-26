@@ -150,4 +150,37 @@ describe("make-up rounds", () => {
     expect(res.state.snakePickTurnTeamId).toBe("t1");
     expect(res.state.picks).toHaveLength(0);
   });
+
+  it("a team that fills its last make-up spot mid-round doesn't make the next team lose its turn", () => {
+    const players = makePlayerPool("RB", 20);
+    let state: DraftState = makeState({
+      teamCount: 3,
+      players,
+      settings: { auctionSpots: 8, rosterSize: 8, positionGroups: null },
+    });
+    // No regular snake rounds; t1 owes 1 make-up pick, t2 and t3 owe 2 each.
+    state = {
+      ...state,
+      picks: [...auctionPicksFor("t1", 7, "a1_"), ...auctionPicksFor("t2", 6, "a2_"), ...auctionPicksFor("t3", 6, "a3_")],
+    };
+    const ctx = makeCtx(1000);
+    state = beginSnake(state, ctx).state;
+    expect(state.phase).toBe("makeup");
+
+    const turns: string[] = [];
+    let n = 0;
+    while (state.phase === "makeup") {
+      const teamId = state.snakePickTurnTeamId!;
+      turns.push(`${state.makeupRound}:${teamId}`);
+      const res = applyMakeupPickMake(state, { type: "pick:make", teamId, playerId: `rb${++n}` }, ctx);
+      expect(res.events[0]).not.toMatchObject({ type: "draft:rejected" });
+      state = res.state;
+    }
+    // Round 1: every team that owed a pick gets exactly one turn, whichever direction it runs.
+    const round1 = turns.filter((t) => t.startsWith("1:")).map((t) => t.slice(2));
+    expect(round1.sort()).toEqual(["t1", "t2", "t3"]);
+    const round2 = turns.filter((t) => t.startsWith("2:")).map((t) => t.slice(2));
+    expect(round2.sort()).toEqual(["t2", "t3"]);
+    expect(state.phase).toBe("complete");
+  });
 });

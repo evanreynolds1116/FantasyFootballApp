@@ -36,6 +36,13 @@
       "when": 1790433052764,
       "tag": "0004_drop_nominator_must_bid",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790435430096,
+      "tag": "0005_lot_reveal_top_n",
+      "breakpoints": true
     }
   ]
 }

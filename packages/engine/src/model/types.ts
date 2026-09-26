@@ -50,6 +50,12 @@ export type Lot = {
   tiedTeamIds: TeamId[];
   winnerTeamId: TeamId | null;
   price: number | null;
+  /**
+   * The reveal setting in force when this lot's opening sealed round was
+   * revealed — how many of those bids everyone has seen. Unset until the
+   * reveal (and for lots revealed before this was recorded).
+   */
+  revealTopN?: number | "all";
 };
 
 export type Bid = {

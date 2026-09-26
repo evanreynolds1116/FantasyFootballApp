@@ -1,5 +1,6 @@
 import {
   currentLot,
+  makeupOrderForRound,
   isBroke,
   lotsInRound,
   nominationOrderForRound,
@@ -11,16 +12,19 @@ import type { ReactNode } from "react";
 import { useDraft } from "../../store/DraftProvider";
 import { asEngineState } from "../../store/selectors";
 import { useCountdown } from "../../lib/useCountdown";
+import { ResultsScreen } from "../results/ResultsScreen";
 import { RevealScreen } from "../reveal/RevealScreen";
 import { SnakeBoardGrid } from "../snake/SnakeBoardGrid";
 import { TieRebidScreen } from "../tie/TieRebidScreen";
 import { BidStatusStrip } from "../primitives/BidStatusStrip";
+import { DraftNotFound } from "../primitives/DraftNotFound";
 import { PausedBanner } from "../primitives/PausedBanner";
 import { RoundLotsGrid } from "./RoundLotsGrid";
 import { TeamsOverviewBoard, type BoardTeamRow } from "./TeamsOverviewBoard";
 
 export function BigBoardScreen() {
-  const { snapshot, reveal } = useDraft();
+  const { snapshot, reveal, notFound } = useDraft();
+  if (notFound) return <DraftNotFound />;
   if (!snapshot) return <div className="flex h-full items-center justify-center text-muted">Loading…</div>;
 
   if (reveal) {
@@ -31,25 +35,49 @@ export function BigBoardScreen() {
     );
   }
 
-  if (snapshot.phase === "snake") {
+  if (snapshot.phase === "snake" || snapshot.phase === "makeup") {
+    const isMakeup = snapshot.phase === "makeup";
     const clockTeam = snapshot.teams.find((t) => t.id === snapshot.snakePickTurnTeamId);
     const totalRounds = snapshot.settings.rosterSize - snapshot.settings.auctionSpots;
+    const makeupTeams = isMakeup ? makeupOrderForRound(asEngineState(snapshot)).map((id) => snapshot.teams.find((t) => t.id === id)?.draftNumber) : [];
     return (
-      <BoardShell phase={snapshot.phase} round={snapshot.snakeRound} lotIndex={null} lotsCount={null} paused={snapshot.paused} breakEndsAt={snapshot.breakEndsAt}>
+      <BoardShell
+        phase={isMakeup ? "Make-up" : snapshot.phase}
+        round={isMakeup ? snapshot.makeupRound : snapshot.snakeRound}
+        lotIndex={null}
+        lotsCount={null}
+        paused={snapshot.paused}
+        breakEndsAt={snapshot.breakEndsAt}
+      >
         <div className="flex min-w-0 flex-grow flex-col gap-5">
           <div className="rounded-[24px] border border-line bg-surface px-9 py-6 text-2xl">
             <span className="font-bold text-accent">Team {clockTeam?.draftNumber ?? "?"}</span> is on the clock
+            {isMakeup && (
+              <span className="mt-1 block text-lg text-muted">
+                Make-up rounds: teams that went broke fill their open auction spots ({makeupTeams.map((n) => `Team ${n}`).join(", ")} this round).
+              </span>
+            )}
           </div>
           <SnakeBoardGrid
             totalRounds={totalRounds}
             teams={snapshot.teams}
             players={snapshot.players}
             picks={snapshot.picks}
-            currentRound={snapshot.snakeRound}
+            currentRound={isMakeup ? null : snapshot.snakeRound}
             currentTeamId={snapshot.snakePickTurnTeamId}
+            makeupRounds={isMakeup ? snapshot.makeupRound : 0}
+            currentMakeupRound={isMakeup ? snapshot.makeupRound : null}
           />
         </div>
       </BoardShell>
+    );
+  }
+
+  if (snapshot.phase === "complete") {
+    return (
+      <div className="flex min-h-screen w-full flex-col bg-bg px-12 py-8 text-text">
+        <ResultsScreen variant="board" />
+      </div>
     );
   }
 

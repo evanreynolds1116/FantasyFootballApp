@@ -149,4 +149,46 @@ describe("bid secrecy (network level)", () => {
       socketB.disconnect();
     }
   });
+
+  it("after a lot resolves, snapshots carry only the amounts the reveal showed", async () => {
+    const users = await Promise.all(["Commish2", "A2", "B2", "C2"].map((n) => createDevSession(baseUrl, n)));
+    const created = await createLeague(baseUrl, users[0]!.token, {
+      name: "Post-reveal Secrecy League",
+      settings: { auctionSpots: 1, rosterSize: 1, positionGroups: null, revealTopN: 1, earlyClose: true },
+      teams: [{ name: "A" }, { name: "B" }, { name: "C" }],
+    });
+    const sockets = [] as ReturnType<typeof connectSocket>[];
+    try {
+      for (let i = 0; i < 3; i++) await claimTeam(app, created.teams[i]!.id, users[i + 1]!.userId);
+      await addPlayers(baseUrl, users[0]!.token, created.leagueId, [1, 2, 3].map((n) => ({ name: `Secret ${n}`, position: "QB" })));
+      const rows = await app.db.select({ id: player.id }).from(player).where(eq(player.leagueId, created.leagueId));
+      const { draftId } = await createDraftForLeague(baseUrl, users[0]!.token, created.leagueId);
+      for (const u of users) {
+        const s = connectSocket(baseUrl, u.token);
+        sockets.push(s);
+        await waitForConnect(s);
+        await joinDraft(s, draftId);
+      }
+      const [commishSock, sa, sb, sc] = sockets as [ReturnType<typeof connectSocket>, ReturnType<typeof connectSocket>, ReturnType<typeof connectSocket>, ReturnType<typeof connectSocket>];
+      await emitIntent(commishSock, "admin:start", {});
+      const lotOpen = waitForEvent<{ lotId: string }>(commishSock, "lot:open");
+      for (const [i, s] of [sa, sb, sc].entries()) await emitIntent(s, "nominate", { playerId: rows[i]!.id });
+      const { lotId } = await lotOpen;
+
+      const reveal = waitForEvent<{ bids: { amount: number }[] }>(commishSock, "lot:reveal");
+      await emitIntent(sa, "bid:submit", { lotId, amount: 50 });
+      await emitIntent(sb, "bid:submit", { lotId, amount: 40 });
+      await emitIntent(sc, "bid:submit", { lotId, amount: 30 });
+      expect((await reveal).bids.map((b) => b.amount)).toEqual([50]); // winner only
+
+      const snapshot = new Promise<{ bids: { lotId: string; teamId: string; amount?: number }[] }>((r) => sc.once("state:snapshot", r));
+      sc.emit("resync", {}, () => {});
+      const lotBids = (await snapshot).bids.filter((b) => b.lotId === lotId);
+      expect(lotBids).toHaveLength(3);
+      expect(lotBids.filter((b) => b.amount !== undefined).map((b) => b.amount)).toEqual([50]);
+    } finally {
+      sockets.forEach((s) => s.disconnect());
+      await cleanupLeague(app.db, created.leagueId, users.map((u) => u.userId));
+    }
+  });
 });

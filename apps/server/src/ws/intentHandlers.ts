@@ -102,7 +102,8 @@ export function registerIntentHandlers(runtime: EngineRuntime, socket: Socket): 
       try {
         if (TEAM_SCOPED_EVENTS.has(event)) {
           const leagueId = data(socket).leagueId;
-          const teamId = leagueId ? await findOwnedTeamId(db, data(socket).userId, leagueId) : null;
+          const cached = data(socket).teamId;
+          const teamId = cached !== undefined ? cached : leagueId ? await findOwnedTeamId(db, data(socket).userId, leagueId) : null;
           if (!teamId) {
             ack?.({ ok: false, code: "FORBIDDEN", message: "You don't own a team in this league." });
             return;
@@ -118,7 +119,8 @@ export function registerIntentHandlers(runtime: EngineRuntime, socket: Socket): 
             ack?.({ ok: false, code: "NOT_JOINED", message: "Join a draft before sending intents." });
             return;
           }
-          await assertCommissioner(db, data(socket).userId, leagueId);
+          if (data(socket).isCommissioner === false) throw new ForbiddenError("Only the league commissioner can do this.");
+          if (data(socket).isCommissioner === undefined) await assertCommissioner(db, data(socket).userId, leagueId);
           const action = { type: event, ...parsed.data } as Action;
           await dispatch(runtime, socket, action, ack);
         }

@@ -1,7 +1,9 @@
 # Progress notes — read this first when picking the project back up
 
 Last updated 2026-09-26, after the session that built the Commissioner console,
-fixed undo to match SPEC, and built Rosters & budgets, League setup and the Lobby.
+Rosters & budgets, League setup and the Lobby, then ran full-length scripted
+mock drafts and fixed what they found (make-up screen, results screen, bid
+secrecy, make-up turn order, a server crash, persistence latency).
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -9,20 +11,21 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-191 tests, full 12-team scripted draft acceptance test. Committed.
+198 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests (now 30) including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 32) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
 **Phase 3 — UI (`apps/web`)**: every screen in SPEC's table is built and
 verified in headless Chrome against a live server, including the pre-draft flow
 (League setup, Lobby, invite/claim). A full setup → join → start → draft run
-works through the UI alone. SPEC's phase-3 "done when" — friends complete a
-mock draft on phones — hasn't happened yet. Committed (`597aa7a`, `49b5083`,
-`dcc84c4`, plus the League setup + Lobby commit).
+works through the UI alone, and two full-length 12-team scripted mock drafts
+(see "Mock draft runs" below) have finished clean. SPEC's phase-3 "done when" —
+friends complete a mock draft on phones — hasn't happened yet. Committed
+(`597aa7a`, `49b5083`, `dcc84c4`, `b09770d`, plus the mock-draft fixes commit).
 
 ## What's actually built and working in apps/web
 
@@ -97,6 +100,19 @@ mock draft on phones — hasn't happened yet. Committed (`597aa7a`, `49b5083`,
   screen; it follows the existing team panels' style. Data helpers in
   `rosterData.ts` are unit-tested. Verified in headless Chrome at phone and
   laptop widths, including a live update while open.
+- **Make-up rounds** reuse the snake pick screen (`SnakePickScreen` handles
+  phase "makeup"): the broke team gets "Your make-up pick" and an
+  explanation; everyone else sees "Your roster is full". The board grid
+  (phone Board tab and big board) adds M1, M2… rows. Turn order comes from
+  the engine's `makeupOrderForRound`.
+- **Results** (`components/results/`, SPEC Flow 4) — shown on the draft
+  screen and the big board once the phase is "complete": rosters & spend
+  (reusing the Rosters pieces), the full draft log with only the runner-up
+  bids that were revealed, and a client-side CSV download (FR-18). The big
+  board link needs no login, so it doubles as the shareable results page.
+  There's no server `/drafts/:id/export.csv` route yet.
+- A draft link with a bad/unknown id shows "Draft not found" instead of
+  loading forever (`primitives/DraftNotFound.tsx`).
 - `routes/DraftSubpage.tsx` is the shared frame (back link, connection badge,
   paused banner, own socket) for secondary screens — the console and rosters
   both use it.
@@ -167,6 +183,34 @@ League setup + Lobby session:
   `createLeagueUnchecked` helper in `apps/server/test/helpers.ts`.
 - Inline favicon in `apps/web/index.html` — this was the mystery browser 404.
 
+Mock-draft session (fixes found by full-length scripted runs):
+- **Bid secrecy after reveal — fixed.** The snapshot used to include every
+  bid amount on an awarded lot, so losing bids the reveal hid ("N other bids
+  stay hidden") went to every client, and a lot voided mid-bidding exposed
+  its sealed bids. An earlier session had allowed post-award amounts on
+  purpose; SPEC says hidden losing bids never leave the server, so SPEC won.
+  Now the engine's `revealedBidIds` (`selectors/secrecy.ts`) decides: opening
+  round = top N by the setting recorded on the lot at reveal
+  (`Lot.revealTopN`, column `lot.reveal_top_n`, migration `0005`), tie
+  re-bids in full once their round closes, superseded/voided never.
+  `toPublicSnapshot` uses it; network test in `bid-secrecy.test.ts`.
+- **Make-up turn order — fixed.** A team filling its last make-up spot
+  mid-round made the next team lose its turn (the order shrank under the
+  turn counter). `makeupOrderForRound` fixes each round's order at round
+  start; engine tests cover it.
+- **Server crash on a malformed draft id — fixed.** A socket `join` with a
+  non-UUID id threw an unhandled rejection and killed the process (found
+  when a board link with a placeholder id was opened mid-run). join/resync
+  now validate and catch; regression test in `reconnect.test.ts`.
+- **Persistence is one SQL statement per action.** postgres.js needs two
+  round trips per parameterised statement and can't pipeline them, so the
+  old 5–8-statement transaction cost 8+ round trips (~26 ms each to the
+  Supabase dev DB). `persistReduceResult` now sends the whole diff as one
+  jsonb parameter applied by data-modifying CTEs (atomic without
+  BEGIN/COMMIT). Sockets also cache their team id and commissioner flag at
+  join/resync instead of querying per intent. Ack latency: single action
+  ~320 ms → ~58 ms; 12 simultaneous bids, slowest ack 3.4 s → 0.7 s.
+
 ## Known, intentional gaps (not bugs — flagged as they came up)
 
 - **Pre-draft gaps:** no team avatars (optional in FR-02), no "mock round"
@@ -192,8 +236,15 @@ League setup + Lobby session:
   bidder, so "Your bid is in" shows `•••` instead of a remembered number after
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
-  data, CSV parsing, rules summary, start checks) are unit-tested; screens are
-  verified by hand. No Playwright suite yet.
+  data, CSV parsing, rules summary, start checks, results log/CSV) are
+  unit-tested; screens are verified by hand. No Playwright suite yet.
+- **Bid acks under a rush still exceed SPEC's 300 ms** for the last of 12
+  simultaneous bidders (~0.7 s) because actions are persisted one at a time
+  per draft and each save is ~2 round trips to the remote dev DB. A database
+  co-located with the server should fix it; if not, the next step would be
+  batching queued actions into one save ("group commit").
+- **During a tie, the reveal's "Up next" card names the tied lot itself**
+  (it's still the current lot). Minor, not fixed.
 - **The big board has no Rosters view** — it's a separate spectator route and
   only shows the teams overview column. Rosters & budgets needs a login.
 - **Undo doesn't roll back a phase change.** Undoing the award that ended the
@@ -209,11 +260,25 @@ League setup + Lobby session:
 
 In rough priority order:
 1. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
-   Worth a scripted full-length run first (every lot, ties, snake, make-up)
-   to shake out anything the screen-by-screen checks missed.
+   The scripted runs are clean; this needs the app reachable from phones
+   (hosting, or the dev server on the LAN).
 2. The console gaps listed above.
-3. Real auth, watchlist/queue, CSV export, settings-editing after creation —
-   all previously deferred to phase 3/4, still deferred.
+3. Real auth, watchlist/queue, a server CSV export route, settings-editing
+   after creation — all previously deferred to phase 3/4, still deferred.
+
+## Mock draft runs
+
+A scripted full-length run drives the live server over HTTP + Socket.IO with
+12 bot managers (default league settings, 10 s clocks): $25-step bids so ties
+are common, one or two teams that go broke on purpose, passes, pause/resume,
++15 s, undo, and nomination/pick clock expiries. A spectator socket checks
+every broadcast and periodic snapshots against exactly what each reveal
+showed; headless Chrome watches the big board and a broke team's screen. At
+the end it checks every roster (17 players, position limits, auction +
+make-up = 8, no overspend, no player twice), DB vs state, and audit seq.
+Latest run: 17.6 min, 94 lots (67 ties), no findings. The script lives in the
+session scratchpad, not the repo — worth checking in (e.g. as
+`apps/server/scripts/mock-draft.mjs`) before the next big change.
 
 ## How to pick this back up tomorrow
 
@@ -223,7 +288,7 @@ In rough priority order:
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the League setup + Lobby commit. Note `pnpm run typecheck`
+  packages as of the mock-draft fixes commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with

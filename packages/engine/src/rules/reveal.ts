@@ -18,7 +18,8 @@ export function applyRevealTopN(bids: RevealedBid[], revealTopN: number | "all")
 
 function closeInitialLot(state: DraftState, lot: Lot, ctx: Ctx): ReduceResult {
   const { topAmount, winners, allBids } = evaluateTopBid(state, lot, lot.eligibleTeamIds, 0);
-  const closedLot: Lot = { ...lot, state: "closed" };
+  // Recorded so what counts as revealed never changes if the setting is changed mid-draft.
+  const closedLot: Lot = { ...lot, state: "closed", revealTopN: state.settings.revealTopN };
   let nextState = bumpVersion({ ...state, lots: state.lots.map((l) => (l.id === lot.id ? closedLot : l)) });
 
   const revealedBids = applyRevealTopN(

@@ -88,6 +88,7 @@ export function lotFromRow(row: LotRow): Lot {
     tiedTeamIds: (row.tiedTeamIds as string[]) ?? [],
     winnerTeamId: row.winnerTeamId,
     price: row.price,
+    ...(row.revealTopN !== null ? { revealTopN: row.revealTopN === "all" ? ("all" as const) : Number(row.revealTopN) } : {}),
   };
 }
 
@@ -107,6 +108,7 @@ export function lotToRow(draftId: string, lot: Lot): typeof schema.lot.$inferIns
     tiedTeamIds: lot.tiedTeamIds,
     winnerTeamId: lot.winnerTeamId,
     price: lot.price,
+    revealTopN: lot.revealTopN === undefined ? null : String(lot.revealTopN),
   };
 }
 

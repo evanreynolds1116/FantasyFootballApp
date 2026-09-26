@@ -5,7 +5,7 @@ import { useDraft } from "../../store/DraftProvider";
 import { StatTile } from "../primitives/StatTile";
 import { acquiredLabel, groupLimitLabel, rosterByGroup, teamSummaries, type TeamSummary } from "./rosterData";
 
-function TeamsTable({ rows, selectedId, onSelect }: { rows: TeamSummary[]; selectedId: string; onSelect: (id: string) => void }) {
+export function TeamsTable({ rows, selectedId, onSelect }: { rows: TeamSummary[]; selectedId: string; onSelect: (id: string) => void }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
       <table className="w-full table-fixed text-left text-[15px]">
@@ -78,7 +78,7 @@ function TeamsTable({ rows, selectedId, onSelect }: { rows: TeamSummary[]; selec
   );
 }
 
-function TeamDetail({ snapshot, team, sectionRef }: { snapshot: DraftSnapshot; team: TeamSummary; sectionRef: Ref<HTMLElement> }) {
+export function TeamDetail({ snapshot, team, sectionRef }: { snapshot: DraftSnapshot; team: TeamSummary; sectionRef: Ref<HTMLElement> }) {
   const groups = rosterByGroup(snapshot, team.id);
   const { rosterSize, auctionSpots } = snapshot.settings;
 

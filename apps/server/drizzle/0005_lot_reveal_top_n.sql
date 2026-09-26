@@ -1,0 +1,1 @@
+ALTER TABLE "lot" ADD COLUMN "reveal_top_n" text;

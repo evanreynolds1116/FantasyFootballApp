@@ -1,5 +1,6 @@
 import type { DraftSettings } from "../settings/types.js";
 import type { DraftState, Team, TeamId } from "../model/types.js";
+import { auctionDesignatedSpotsRemaining, auctionSpotsFilled } from "./budget.js";
 import { canNominate } from "./eligibility.js";
 
 export function teamsByDraftNumber(teams: Team[]): TeamId[] {
@@ -50,4 +51,31 @@ export function eligibleNominationOrderForRound(state: DraftState, round: number
   const base = teamsByDraftNumber(state.teams);
   const eligible = base.filter((id) => canNominate(state, id));
   return nominationOrderForRound(state.settings, eligible, round);
+}
+
+/**
+ * Make-up turn order (SPEC phase 2 step 3: broke teams, in snake order among
+ * just those teams, continuing the direction the snake ended).
+ *
+ * For the current make-up round the order is fixed at round start: teams
+ * that still owe a pick plus teams that already made their pick this round.
+ * Recomputing from "still owes" alone would shrink the list mid-round when a
+ * team fills its last spot, and the turn counter would then skip whoever was
+ * next. For the following round it projects who will still owe a pick once
+ * this round's remaining turns are taken.
+ */
+export function makeupOrderForRound(state: DraftState, round: number = state.makeupRound): TeamId[] {
+  const broke = teamsByDraftNumber(state.teams).filter((id) => auctionSpotsFilled(state, id) < state.settings.auctionSpots);
+  const pickedInRound = (id: TeamId, r: number) => state.picks.some((p) => p.teamId === id && p.source === "makeup" && p.round === r);
+  let participants: TeamId[];
+  if (round === state.makeupRound) {
+    participants = broke.filter((id) => auctionDesignatedSpotsRemaining(state, id) > 0 || pickedInRound(id, round));
+  } else {
+    const current = makeupOrderForRound(state, state.makeupRound);
+    participants = broke.filter((id) => {
+      const stillToPickThisRound = current.includes(id) && !pickedInRound(id, state.makeupRound) ? 1 : 0;
+      return auctionDesignatedSpotsRemaining(state, id) - stillToPickThisRound > 0;
+    });
+  }
+  return orderForRound(participants, round, state.snakeDirection);
 }

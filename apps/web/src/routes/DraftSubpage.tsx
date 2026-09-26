@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { ConnectionBadge } from "../components/primitives/ConnectionBadge";
+import { DraftNotFound } from "../components/primitives/DraftNotFound";
 import { PausedBanner } from "../components/primitives/PausedBanner";
 import { useAuth } from "../lib/auth";
 import { DraftProvider, useDraft } from "../store/DraftProvider";
 
 function Shell({ draftId, children }: { draftId: string; children: ReactNode }) {
-  const { snapshot, status } = useDraft();
+  const { snapshot, status, notFound } = useDraft();
+  if (notFound) return <DraftNotFound />;
   return (
     <div className="flex min-h-screen flex-col bg-bg text-text">
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">

@@ -194,6 +194,8 @@ export const lot = pgTable(
     /** Point-in-time snapshot per the engine's own semantics — not derivable, must be stored. */
     eligibleTeamIds: jsonb("eligible_team_ids").notNull().default(sql`'[]'::jsonb`),
     tiedTeamIds: jsonb("tied_team_ids").notNull().default(sql`'[]'::jsonb`),
+    /** Reveal setting in force when the lot's opening round was revealed: "all" or a numeric string; null until then. */
+    revealTopN: text("reveal_top_n"),
   },
   (t) => [
     primaryKey({ columns: [t.draftId, t.id] }),

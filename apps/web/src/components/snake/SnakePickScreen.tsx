@@ -1,5 +1,6 @@
 import {
   availablePlayerIds,
+  makeupOrderForRound,
   orderForRound,
   positionGroupCount,
   positionGroupFor,
@@ -39,6 +40,7 @@ export function SnakePickScreen() {
   const clockTeam = snapshot.teams.find((t) => t.id === snapshot.snakePickTurnTeamId);
   const { label: clockLabel } = useCountdown(snapshot.snakePickEndsAt, snapshot.paused);
 
+  const isMakeup = snapshot.phase === "makeup";
   const totalRounds = snapshot.settings.rosterSize - snapshot.settings.auctionSpots;
   const pickNo = snapshot.picks.length + 1;
 
@@ -46,14 +48,20 @@ export function SnakePickScreen() {
   // those are a rare edge case (pickExpiryAction: "skip") and this is just a
   // "who's up next" hint, never anything a decision depends on.
   const baseIds = teamsByDraftNumber(snapshot.teams);
-  const thisRoundOrder = orderForRound(baseIds, snapshot.snakeRound, 1);
+  const thisRoundOrder = isMakeup ? makeupOrderForRound(state) : orderForRound(baseIds, snapshot.snakeRound, 1);
   const clockIdx = thisRoundOrder.indexOf(snapshot.snakePickTurnTeamId ?? "");
   let upcoming = clockIdx >= 0 ? thisRoundOrder.slice(clockIdx + 1) : [];
-  if (upcoming.length < 3 && snapshot.snakeRound < totalRounds) {
+  const nextMakeupOrder = isMakeup ? makeupOrderForRound(state, snapshot.makeupRound + 1) : [];
+  if (isMakeup) {
+    if (upcoming.length < 3) upcoming = [...upcoming, ...nextMakeupOrder];
+  } else if (upcoming.length < 3 && snapshot.snakeRound < totalRounds) {
     upcoming = [...upcoming, ...orderForRound(baseIds, snapshot.snakeRound + 1, 1)];
   }
+  // In make-up rounds only teams that went broke pick; everyone else is done.
+  const inMakeup = isMakeup && myTeamId !== null && (thisRoundOrder.includes(myTeamId) || nextMakeupOrder.includes(myTeamId));
   const teamById = new Map(snapshot.teams.map((t) => [t.id, t]));
-  const nextThree = upcoming.slice(0, 3).map((id) => teamById.get(id)?.draftNumber ?? "?");
+  // "you" rather than your own team number — at a turn-around (or in make-up rounds) you're often next again.
+  const nextThree = upcoming.slice(0, 3).map((id) => (id === myTeamId ? "you" : `Team ${teamById.get(id)?.draftNumber ?? "?"}`));
 
   const groups = snapshot.settings.positionGroups ?? [];
   const needChips = myTeamId
@@ -85,17 +93,27 @@ export function SnakePickScreen() {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-grow flex-col gap-3.5 py-2">
       <div className="flex justify-between text-[13px] font-semibold uppercase tracking-[0.06em] text-muted">
-        <span>
-          Snake · Round {snapshot.snakeRound} of {totalRounds}
-        </span>
+        <span>{isMakeup ? `Make-up · Round ${snapshot.makeupRound}` : `Snake · Round ${snapshot.snakeRound} of ${totalRounds}`}</span>
         <span>Pick {pickNo}</span>
       </div>
+
+      {isMakeup && (
+        <div className="rounded-[14px] border border-line bg-surface px-4 py-3 text-sm text-muted">
+          {inMakeup
+            ? "Make-up rounds: you went broke before filling your auction spots, so you fill them now with picks, one per round, in snake order among the teams still filling."
+            : `Your roster is full. Make-up rounds are for teams that went broke before filling their auction spots${
+                thisRoundOrder.length > 0 ? ` (${thisRoundOrder.map((id) => `Team ${teamById.get(id)?.draftNumber ?? "?"}`).join(", ")} this round)` : ""
+              }.`}
+        </div>
+      )}
 
       {onTheClock ? (
         <div className="flex items-center justify-between rounded-panel bg-accent px-4 py-4 text-on-accent">
           <div className="flex flex-col gap-0.5">
-            <span className="text-[13px] font-bold uppercase tracking-[0.08em]">You&apos;re on the clock</span>
-            <span className="text-[15px] font-medium">{nextThree.length > 0 ? `Then Team ${nextThree.join(", ")}` : "Last pick of the snake"}</span>
+            <span className="text-[13px] font-bold uppercase tracking-[0.08em]">{isMakeup ? "Your make-up pick" : "You're on the clock"}</span>
+            <span className="text-[15px] font-medium">
+              {nextThree.length > 0 ? `Then ${nextThree.join(", ")}` : isMakeup ? "Last pick of the draft" : "Last pick of the snake"}
+            </span>
           </div>
           <span className="font-display text-4xl font-extrabold">{clockLabel}</span>
         </div>
@@ -105,7 +123,7 @@ export function SnakePickScreen() {
         </div>
       )}
 
-      {myTeamId && needChips.length > 0 && (
+      {myTeamId && needChips.length > 0 && (!isMakeup || inMakeup) && (
         <div className="flex flex-col gap-2 rounded-[14px] bg-surface px-3.5 py-3.5">
           <div className="label">You still need</div>
           <div className="flex flex-wrap gap-1.5">
@@ -149,8 +167,10 @@ export function SnakePickScreen() {
           teams={snapshot.teams}
           players={snapshot.players}
           picks={snapshot.picks}
-          currentRound={snapshot.snakeRound}
+          currentRound={isMakeup ? null : snapshot.snakeRound}
           currentTeamId={snapshot.snakePickTurnTeamId}
+          makeupRounds={isMakeup ? snapshot.makeupRound : 0}
+          currentMakeupRound={isMakeup ? snapshot.makeupRound : null}
         />
       )}
 

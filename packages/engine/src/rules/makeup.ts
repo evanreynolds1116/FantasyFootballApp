@@ -5,7 +5,7 @@ import { bumpVersion } from "../model/state.js";
 import type { DraftState, TeamId } from "../model/types.js";
 import { auctionDesignatedSpotsRemaining, auctionSpotsFilled } from "../selectors/budget.js";
 import { availablePlayerIds, isPlayerAvailable } from "../selectors/lots.js";
-import { directionForRound, orderForRound, teamsByDraftNumber } from "../selectors/order.js";
+import { directionForRound, makeupOrderForRound, teamsByDraftNumber } from "../selectors/order.js";
 import { remainingMinimumsReachable, wouldExceedPositionMax } from "../selectors/roster.js";
 import type { Event } from "../events/types.js";
 import { awardNonAuctionPick } from "./award.js";
@@ -35,12 +35,7 @@ export function beginMakeup(state: DraftState, ctx: Ctx): ReduceResult {
 }
 
 function advanceMakeupTurn(state: DraftState, ctx: Ctx): ReduceResult {
-  const base = baseBrokeTeamIds(state);
-  const order = orderForRound(
-    base.filter((id) => auctionDesignatedSpotsRemaining(state, id) > 0),
-    state.makeupRound,
-    state.snakeDirection,
-  );
+  const order = makeupOrderForRound(state);
 
   if (state.makeupRoundTurnsTaken < order.length) {
     const teamId = order[state.makeupRoundTurnsTaken] as TeamId;
@@ -80,11 +75,7 @@ export function applyMakeupPickMake(state: DraftState, action: Extract<Action, {
     return reject(state, action, "POSITION_LIMIT", "This pick would make a remaining position minimum unreachable.");
   }
 
-  const order = orderForRound(
-    baseBrokeTeamIds(state).filter((id) => auctionDesignatedSpotsRemaining(state, id) > 0),
-    state.makeupRound,
-    state.snakeDirection,
-  );
+  const order = makeupOrderForRound(state);
   const wasNormalTurn = state.makeupRoundTurnsTaken < order.length;
   const awarded = awardNonAuctionPick(state, { teamId: action.teamId, playerId: action.playerId, source: "makeup", round: state.makeupRound }, ctx);
   const withTurnCount: DraftState = {
@@ -100,11 +91,7 @@ export function applyMakeupPickExpired(state: DraftState, action: Extract<Action
     return ok(state, []);
   }
 
-  const order = orderForRound(
-    baseBrokeTeamIds(state).filter((id) => auctionDesignatedSpotsRemaining(state, id) > 0),
-    state.makeupRound,
-    state.snakeDirection,
-  );
+  const order = makeupOrderForRound(state);
   const wasNormalTurn = state.makeupRoundTurnsTaken < order.length;
   const bumpTurns = (s: DraftState): DraftState => ({
     ...s,

@@ -3,7 +3,9 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { BidScreen } from "../components/bid/BidScreen";
 import { NominateScreen } from "../components/nominate/NominateScreen";
 import { ConnectionBadge } from "../components/primitives/ConnectionBadge";
+import { DraftNotFound } from "../components/primitives/DraftNotFound";
 import { PausedBanner } from "../components/primitives/PausedBanner";
+import { ResultsScreen } from "../components/results/ResultsScreen";
 import { RevealScreen } from "../components/reveal/RevealScreen";
 import { SnakePickScreen } from "../components/snake/SnakePickScreen";
 import { TieRebidScreen } from "../components/tie/TieRebidScreen";
@@ -12,8 +14,9 @@ import { asEngineState } from "../store/selectors";
 import { DraftProvider, useDraft } from "../store/DraftProvider";
 
 function DraftScreenRouter({ draftId }: { draftId: string }) {
-  const { snapshot, status, reveal } = useDraft();
+  const { snapshot, status, reveal, notFound } = useDraft();
   const lot = snapshot ? currentLot(asEngineState(snapshot)) : undefined;
+  if (notFound) return <DraftNotFound />;
 
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
@@ -45,8 +48,10 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
           <NominateScreen />
         ) : snapshot.phase === "auction" ? (
           <BidScreen />
-        ) : snapshot.phase === "snake" ? (
+        ) : snapshot.phase === "snake" || snapshot.phase === "makeup" ? (
           <SnakePickScreen />
+        ) : snapshot.phase === "complete" ? (
+          <ResultsScreen />
         ) : (
           <div className="flex flex-grow flex-col items-center justify-center gap-2 text-muted">
             <span className="font-display text-3xl font-extrabold uppercase text-text">{snapshot.phase}</span>

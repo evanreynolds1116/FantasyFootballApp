@@ -14,6 +14,8 @@ type DraftContextValue = {
   socket: Socket;
   /** Non-null for REVEAL_DISPLAY_MS after a lot:reveal — the only moment these bid amounts exist client-side. */
   reveal: RevealPayload | null;
+  /** True when the server refused the join because no such draft exists (e.g. a mistyped link). */
+  notFound: boolean;
 };
 
 const DraftContext = createContext<DraftContextValue | null>(null);
@@ -42,6 +44,7 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
   const [snapshot, setSnapshot] = useState<DraftSnapshot | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [reveal, setReveal] = useState<RevealPayload | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     let resyncScheduled = false;
@@ -95,7 +98,11 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     };
 
     const handleConnect = () => {
-      void joinDraft(socket, draftId).then(() => {
+      void joinDraft(socket, draftId).then((ack) => {
+        if (!ack.ok && ack.error === "NOT_FOUND") {
+          setNotFound(true);
+          return;
+        }
         setStatus("connected");
         if (hasConnectedBefore) scheduleResync();
         hasConnectedBefore = true;
@@ -144,7 +151,7 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     };
   }, [draftId, socket]);
 
-  const value = useMemo<DraftContextValue>(() => ({ snapshot, status, socket, reveal }), [snapshot, status, socket, reveal]);
+  const value = useMemo<DraftContextValue>(() => ({ snapshot, status, socket, reveal, notFound }), [snapshot, status, socket, reveal, notFound]);
   return <DraftContext.Provider value={value}>{children}</DraftContext.Provider>;
 }
 

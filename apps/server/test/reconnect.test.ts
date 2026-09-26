@@ -128,4 +128,19 @@ describe("reconnect (FR-16)", () => {
       socket2.disconnect();
     }
   });
+
+  it("a malformed or unknown draft id gets an error ack and never takes the server down", async () => {
+    const socket = connectSocket(baseUrl, managerA.token);
+    await waitForConnect(socket);
+    try {
+      for (const bad of ["<that-draft-id>", "not-a-uuid", "00000000-0000-0000-0000-000000000000", 42]) {
+        const ack = await new Promise<{ ok: boolean; error?: string }>((r) => socket.emit("join", { draftId: bad }, r));
+        expect(ack, String(bad)).toMatchObject({ ok: false });
+      }
+      // The server is still up and serving the real draft.
+      await joinDraft(socket, draftId);
+    } finally {
+      socket.disconnect();
+    }
+  });
 });
