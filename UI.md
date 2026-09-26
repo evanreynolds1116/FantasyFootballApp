@@ -104,6 +104,7 @@ The same screens and rules on every device; only the layout changes.
 - Large amber Pause (becomes Resume) and +15 seconds.
 - Timed break: 5, 10, 15, 30 minutes.
 - Clock lengths with −/+ steppers for nominate, bid, tie re-bid and snake pick; note "Apply from the next lot".
+- Bids shown at reveal: Winner only / Top 2–5 / All bids, "From the next reveal".
 - Undo last result, in warn style, naming exactly what it undoes; confirm before acting.
 - Injuries & voiding a lot: "Void this lot · player" (warn, confirm with Keep it / Void, back to pool / Void & mark injured); search to mark a player unavailable; unavailable players listed with "Mark available".
 - Edit rosters & budgets: team number chips; budget left and roster count; adjust budget (± amount + reason, button previews "$960 → $985"); roster list with Remove (inline confirm naming the refund); "Add a player" into an open spot (auction spot with a price, or snake spot), disabled with the reason when there's none.

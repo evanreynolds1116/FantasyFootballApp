@@ -11,7 +11,9 @@ Then (same day) built the watchlist/queue (FR-19), sounds and vibration
 (FR-20), and closed the commissioner console gaps (edit budget/roster, void
 lot, injuries, 10-second "back in" countdown), then real sign-in (email code
 + magic link), then turned the reveal into a build-up show with the next
-clock held until it's over, and refreshed the README and all its screenshots.
+clock held until it's over, refreshed the README and all its screenshots,
+gave the big board a TV-sized reveal, and added the server CSV export and
+mid-draft settings (reveal setting, league rename).
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -19,12 +21,12 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-238 tests, full 12-team scripted draft acceptance test. Committed.
+243 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests (now 48) including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 51) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
 **Phase 3 — UI (`apps/web`)**: every screen in SPEC's table is built and
@@ -164,6 +166,27 @@ architecture, the stack, setup and the API.
   - `tests/rules/revealHold.test.ts` (4) and `revealTimeline.test.ts` (7);
     one tie/pause test moved past the reveal. Verified live on a phone:
     stage screenshots, vibration order, next clock at a full 60 s.
+- **Server CSV export + settings after the start**:
+  - `GET /drafts/:id/export.csv` (league members; 404 bad/unknown id) —
+    built by the engine's new `selectors/results.ts` (`draftLog`,
+    `buildResultsCsv`, moved from the web app) from `toPublicSnapshot`, so a
+    hidden bid can't appear. New column `revealed_runner_up_bids`;
+    commissioner-added players show as "Commissioner"; fields starting with
+    = + - @ are neutralized for spreadsheets. File named after the league
+    ("…-results-so-far.csv" mid-draft). The results screen's Download CSV
+    now fetches it.
+  - **Bug fixed:** mid-draft `admin:setClocks` / `admin:setRevealTopN` only
+    changed memory — `draft_settings` was never written, so a restart
+    lost them. `persistReduceResult` now updates the clock and reveal
+    columns in the same single statement when settings change.
+  - Console: "Bids shown at reveal" (winner only / top 2–5 / all), from the
+    next reveal. Settings page after the start: explains what's locked,
+    links to the console, and renames the league (PATCH with only a name is
+    allowed after the start; anything else still 409 LOCKED). Lobby link
+    reads "Rename league" once locked.
+  - `test/settings-and-export.test.ts` (3, incl. a secrecy check with
+    "winner only") and `tests/selectors/results.test.ts` (5). Verified live:
+    console, rename, and a real Download CSV of a finished draft.
 - **TV-sized reveal**: `RevealScreen` now has a shared `useRevealView` model
   (timeline, flipped bids, count-up, details, sounds) with a phone layout and
   a `size="board"` TV layout at the big board's scale (96px player, 168px
@@ -428,7 +451,7 @@ Walkthrough, manual test and nominations session (2026-09-26):
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
   data, CSV parsing, rules summary, start checks, results log/CSV,
-  nomination slots / unavailable reasons, whose turn it is, commissioner edit text, the reveal timeline — 55 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
+  nomination slots / unavailable reasons, whose turn it is, commissioner edit text, the reveal timeline — 52 tests; the results log/CSV tests moved to the engine) are unit-tested; screens are verified by hand. No Playwright suite yet.
 - **Bid acks under a rush still exceed SPEC's 300 ms** for the last of 12
   simultaneous bidders (~0.7 s) because actions are persisted one at a time
   per draft and each save is ~2 round trips to the remote dev DB. A database
@@ -459,8 +482,7 @@ In rough priority order:
    sign-in emails (DEV_LOGIN must stay off there). Needs the user's choice
    of host and whether they have a domain.
 3. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
-4. A server CSV export route, settings-editing after creation — previously
-   deferred, still deferred.
+4. MFL import/export (phase 4), and the smaller gaps listed above.
 
 ## Mock draft runs
 
@@ -484,7 +506,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the reveal-show commit. Note `pnpm run typecheck`
+  packages as of the CSV-export commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with

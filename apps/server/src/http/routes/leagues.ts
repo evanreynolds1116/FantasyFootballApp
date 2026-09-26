@@ -148,12 +148,21 @@ export async function registerLeagueRoutes(app: FastifyInstance): Promise<void> 
     });
   });
 
-  /** Commissioner edits name and/or settings before the draft starts. A team-count change adds or removes unclaimed slots. */
+  /**
+   * Commissioner edits name and/or settings before the draft starts. A
+   * team-count change adds or removes unclaimed slots. Once the draft has
+   * started the settings are locked (SPEC), but the league can still be
+   * renamed — a name change alone is allowed at any time.
+   */
   app.patch("/leagues/:id", { preHandler: requireAuth }, async (request, reply) => {
     const { id: leagueId } = request.params as Params;
     const parsed = updateLeagueBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "INVALID_BODY", message: parsed.error.message });
     if (!(await requireCommissioner(leagueId, request.userId!, reply))) return;
+    if (parsed.data.settings === undefined && parsed.data.name) {
+      await db.update(league).set({ name: parsed.data.name }).where(eq(league.id, leagueId));
+      return reply.send({ ok: true });
+    }
     if (await rejectIfLocked(db, leagueId, reply)) return;
 
     const [settingsRow] = await db.select().from(draftSettings).where(eq(draftSettings.leagueId, leagueId)).limit(1);

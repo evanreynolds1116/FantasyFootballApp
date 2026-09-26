@@ -90,9 +90,9 @@ function Lobby({ leagueId }: { leagueId: string }) {
               <h2 id="rules" className="label">
                 Rules
               </h2>
-              {league.isCommissioner && !locked && (
+              {league.isCommissioner && (
                 <Link to={`/league/${league.id}/settings`} className="text-sm font-semibold text-accent underline">
-                  Edit settings
+                  {locked ? "Rename league" : "Edit settings"}
                 </Link>
               )}
             </div>

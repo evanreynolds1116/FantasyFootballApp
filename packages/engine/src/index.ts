@@ -19,6 +19,7 @@ export { revealedBidIds } from "./selectors/secrecy.js";
 export * from "./selectors/queue.js";
 export { MAX_QUEUE_LENGTH } from "./rules/queue.js";
 export * from "./selectors/slots.js";
+export * from "./selectors/results.js";
 export { nextPickNo } from "./rules/award.js";
 export { MAX_BUDGET_ADJUSTMENT } from "./rules/rosterAdmin.js";
 export { BACK_IN_MS } from "./rules/pauseResume.js";

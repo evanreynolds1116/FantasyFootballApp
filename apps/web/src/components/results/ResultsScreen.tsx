@@ -1,19 +1,31 @@
 import { useMemo, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import { useAuth } from "../../lib/auth";
 import { CommishLogList } from "../commish/CommishLogPanel";
 import { useDraft } from "../../store/DraftProvider";
 import { TeamDetail, TeamsTable } from "../rosters/RostersScreen";
 import { teamSummaries } from "../rosters/rosterData";
-import { buildResultsCsv, draftLog, type LogEntry } from "./resultsData";
+import { draftLog, type LogEntry } from "./resultsData";
 
 type Tab = "rosters" | "log";
 
-function downloadCsv(filename: string, csv: string) {
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+/** Downloads the server's results CSV (GET /drafts/:id/export.csv), the same file for everyone in the league. */
+async function downloadResults(token: string, draftId: string): Promise<string | null> {
+  let res: Response;
+  try {
+    res = await fetch(`/drafts/${draftId}/export.csv`, { headers: { authorization: `Bearer ${token}` } });
+  } catch {
+    return "Can't reach the server. Try again.";
+  }
+  if (!res.ok) return res.status === 403 ? "Only the league's managers and commissioner can download the results." : "Couldn't download the results.";
+  const filename = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "draft-results.csv";
+  const url = URL.createObjectURL(await res.blob());
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return null;
 }
 
 function LogRow({ e }: { e: LogEntry }) {
@@ -51,6 +63,9 @@ function LogRow({ e }: { e: LogEntry }) {
  */
 export function ResultsScreen({ variant = "page" }: { variant?: "page" | "board" }) {
   const { snapshot } = useDraft();
+  const { draftId } = useParams<{ draftId: string }>();
+  const token = useAuth().session?.token;
+  const [downloadError, setDownloadError] = useState("");
   const [tab, setTab] = useState<Tab>("rosters");
   const [chosenId, setChosenId] = useState<string | null>(null);
   const detailRef = useRef<HTMLElement>(null);
@@ -73,14 +88,21 @@ export function ResultsScreen({ variant = "page" }: { variant?: "page" | "board"
             {snapshot.picks.length} players drafted · ${totalSpent.toLocaleString("en-US")} spent at auction
           </span>
         </div>
-        {!board && (
-          <button
-            type="button"
-            onClick={() => downloadCsv("draft-results.csv", buildResultsCsv(snapshot))}
-            className="h-11 rounded-ctl border border-line px-4 text-[15px] font-semibold"
-          >
-            Download CSV
-          </button>
+        {!board && token && draftId && (
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={() => void downloadResults(token, draftId).then((err) => setDownloadError(err ?? ""))}
+              className="h-11 rounded-ctl border border-line px-4 text-[15px] font-semibold"
+            >
+              Download CSV
+            </button>
+            {downloadError && (
+              <span role="alert" className="text-sm font-semibold text-warn">
+                {downloadError}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

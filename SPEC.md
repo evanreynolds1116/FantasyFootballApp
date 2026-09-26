@@ -273,7 +273,7 @@ Every server message carries the draft `version` so a client that misses a messa
 | POST | /leagues/:id/players | Manual player add / CSV upload |
 | GET | /drafts/:id/state | Full snapshot (connect/reconnect) |
 | GET | /drafts/:id/log | Audit log |
-| GET | /drafts/:id/export.csv | Results export |
+| GET | /drafts/:id/export.csv | Results export: one row per pick (stage, team, player, price, note, revealed runner-up bids), built from the bid-scrubbed snapshot; league members only |
 
 **Client → server (WebSocket intents)**
 

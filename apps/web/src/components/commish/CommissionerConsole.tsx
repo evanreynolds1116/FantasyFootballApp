@@ -7,6 +7,7 @@ import { CommishLogPanel } from "./CommishLogPanel";
 import { ConnectedTeamsPanel } from "./ConnectedTeamsPanel";
 import { LotAndPlayersPanel } from "./LotAndPlayersPanel";
 import { ResolveTiePanel } from "./ResolveTiePanel";
+import { RevealSettingPanel } from "./RevealSettingPanel";
 import { RosterEditPanel } from "./RosterEditPanel";
 import { UndoButton } from "./UndoButton";
 import { activeClock, phaseSummary } from "./consoleText";
@@ -153,6 +154,8 @@ export function CommissionerConsole() {
       )}
 
       {snapshot.phase !== "complete" && <ClockLengthsPanel snapshot={snapshot} disabled={offline} />}
+
+      {snapshot.phase !== "complete" && <RevealSettingPanel snapshot={snapshot} disabled={offline} />}
 
       {snapshot.phase !== "setup" && <UndoButton snapshot={snapshot} disabled={offline} />}
 

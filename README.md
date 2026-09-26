@@ -92,7 +92,7 @@ The league's waiting room, refreshed every few seconds for everyone:
 - **Teams & draft order** — who has claimed which slot. Managers rename their own team. The commissioner can move teams up/down, **shuffle** the order (done on the server so it can't be rigged), rename any team, or remove a manager from a slot.
 - **Player pool** — upload a **CSV** (a MyFantasyLeague player export saved as CSV works: "Last, First" names and PK/Def positions are converted), preview it before adding, add single players, browse and remove. The pool must have at least *teams × roster size* players before the draft can start.
 - **My queue** — every manager can search the pool and rank the players they want before the draft (private to them; it carries into the draft).
-- **Rules** summary, with an Edit settings link for the commissioner.
+- **Rules** summary, with an Edit settings link for the commissioner. Once the draft has started the rules are locked, but the league can still be renamed.
 - **Start the draft** (commissioner). If some teams have no manager, it says exactly what will happen to them (auto-nominated / auto-picked when their clocks run out — or that a clock set to off would stall the draft). Starting locks settings, teams, order and pool.
 
 Everyone watching the lobby is moved into the draft automatically when it starts.
@@ -182,6 +182,7 @@ Commissioner only (a link appears in the draft header):
 - Status line (phase, round, lot, clock).
 - **Pause / Resume**, **+15 seconds**, **timed breaks** (5 / 10 / 15 / 30 min, countdown on every screen; the draft resumes only when you tap Resume).
 - **Clock lengths** — −/+ steppers for all four clocks; changes apply from the next lot.
+- **Bids shown at reveal** — winner only, top 2–5 or all bids; applies from the next reveal (lots already revealed keep what they showed).
 - **Undo last result** — names exactly what it undoes ("Lot 4, Team 2 won K. Owens for $96") and asks to confirm. Undoing an award returns the money and auction spot, puts the player back in the pool, and pauses the draft.
 - **Tie decision** — only when a tie reaches the fallback and the league chose "commissioner decides".
 - **Injuries & voiding a lot** — void the lot being bid on (or in a tie re-bid): nobody gets the player and no bid is revealed; "Void & mark injured" also takes the player out of the pool. Mark any player unavailable, or available again.
@@ -212,7 +213,7 @@ On the draft screen and the big board:
 - **Rosters & spend** — every team's final roster, money spent and left.
 - **Draft log** — every pick in order with price, stage ("Auction R3", "Snake R2", "Make-up R1"), notes (tie-break, auto-pick, no bids) and the runner-up bids that were revealed. Bids that were never revealed stay secret, even now.
 - **Commissioner changes** — every edit the commissioner made, in order.
-- **Download CSV** — one row per pick.
+- **Download CSV** — one row per pick, with the runner-up bids that were revealed (never a hidden one), served by the server so everyone gets the same file. League members only.
 
 <img src="docs/screenshots/results.png" alt="Final results: rosters and spend" width="800">
 
@@ -429,7 +430,7 @@ All HTTP routes except sign-in (`/auth/*`, `/dev/session`) and `/drafts/:id/spec
 | POST | `/leagues` | Create a league with settings (placeholder team slots, invite code) |
 | GET | `/leagues` | Leagues you run or have a team in |
 | GET | `/leagues/:id` | Lobby view: settings, teams, invite code, pool size, draft status (members only) |
-| PATCH | `/leagues/:id` | Edit name / settings before the start (resizes team slots) |
+| PATCH | `/leagues/:id` | Edit name / settings before the start (resizes team slots); after the start, only the name |
 | POST | `/leagues/:id/invites` | Replace the invite code |
 | PATCH | `/leagues/:id/teams/:teamId` | Rename a team (its manager or the commissioner) |
 | DELETE | `/leagues/:id/teams/:teamId/manager` | Free a claimed slot (commissioner) |
@@ -442,6 +443,7 @@ All HTTP routes except sign-in (`/auth/*`, `/dev/session`) and `/drafts/:id/spec
 | GET | `/invites/:code` | Preview a league from its invite code |
 | POST | `/invites/:code/claim` | Claim an open team `{ teamId, name? }` |
 | GET | `/drafts/:id/state` | Full (bid-scrubbed) draft snapshot |
+| GET | `/drafts/:id/export.csv` | Results CSV, one row per pick with revealed runner-up bids (league members; works mid-draft as "results so far") |
 | GET | `/drafts/:id/log` | Audit log (commissioner only) |
 
 Setup edits return `409 LOCKED` once the draft has started.

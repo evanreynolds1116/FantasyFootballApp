@@ -2,7 +2,7 @@ import type { Action, DraftState, ReduceResult } from "@draft-app/engine";
 import { sql } from "drizzle-orm";
 import type { Db } from "./client.js";
 import { extractBookkeeping } from "./engineState.js";
-import { bidToRow, lotToRow, pickToRow } from "./mappers.js";
+import { bidToRow, lotToRow, pickToRow, settingsToRow } from "./mappers.js";
 
 /** A reduce() call that only produced a draft:rejected event never changed state — nothing to persist. */
 export function wasRejected(result: ReduceResult): boolean {
@@ -69,6 +69,15 @@ export async function persistReduceResult(
   const queues = Object.entries(nextState.queues)
     .filter(([teamId, ids]) => prevState.queues[teamId] !== ids)
     .map(([teamId, ids]) => ({ team_id: teamId, player_ids: ids }));
+  // Mid-draft, only clock lengths and the reveal setting can change (admin:setClocks / admin:setRevealTopN).
+  const settingsRow = nextState.settings !== prevState.settings ? settingsToRow("", nextState.settings) : null;
+  const settings = settingsRow && {
+    nomination_clock_sec: settingsRow.nominationClockSec,
+    bid_clock_sec: settingsRow.bidClockSec,
+    tie_clock_sec: settingsRow.tieClockSec,
+    pick_clock_sec: settingsRow.pickClockSec,
+    reveal_top_n: settingsRow.revealTopN,
+  };
 
   const payload = {
     draftId,
@@ -80,6 +89,7 @@ export async function persistReduceResult(
     removedPickIds,
     addedPicks,
     queues,
+    settings,
     draft: {
       phase: nextState.phase,
       auction_round: nextState.auctionRound,
@@ -151,6 +161,18 @@ export async function persistReduceResult(
       select r.team_id, r.player_ids, now()
       from p, jsonb_to_recordset(p.j->'queues') as r(team_id uuid, player_ids jsonb)
       on conflict (team_id) do update set player_ids = excluded.player_ids, updated_at = now()
+      returning 1
+    ),
+    settings_up as (
+      update draft_settings set
+        nomination_clock_sec = (p.j->'settings'->>'nomination_clock_sec')::int,
+        bid_clock_sec = (p.j->'settings'->>'bid_clock_sec')::int,
+        tie_clock_sec = (p.j->'settings'->>'tie_clock_sec')::int,
+        pick_clock_sec = (p.j->'settings'->>'pick_clock_sec')::int,
+        reveal_top_n = p.j->'settings'->>'reveal_top_n'
+      from p
+      where jsonb_typeof(p.j->'settings') = 'object'
+        and draft_settings.league_id = (select league_id from draft where id = (p.j->>'draftId')::uuid)
       returning 1
     ),
     audit as (
