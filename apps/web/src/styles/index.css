@@ -15,3 +15,48 @@ body {
 .label {
   @apply text-[13px] font-bold uppercase tracking-[0.06em] text-muted;
 }
+
+/* Reveal show (components/reveal). Motion only when the viewer hasn't asked for less. */
+@keyframes reveal-shake {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(-4deg) translateY(-2px); }
+  75% { transform: rotate(4deg) translateY(1px); }
+}
+@keyframes reveal-flip {
+  0% { transform: perspective(600px) rotateX(90deg); opacity: 0; }
+  60% { transform: perspective(600px) rotateX(-12deg); opacity: 1; }
+  100% { transform: perspective(600px) rotateX(0deg); }
+}
+@keyframes reveal-slam {
+  0% { transform: scale(1.6); opacity: 0; }
+  60% { transform: scale(0.94); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes reveal-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+@keyframes reveal-fade-up {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes reveal-confetti {
+  0% { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate3d(var(--drift), 105vh, 0) rotate(var(--spin)); opacity: 0.9; }
+}
+@keyframes reveal-flash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-shake { animation: reveal-shake 0.28s ease-in-out infinite; }
+  .reveal-shake-fast { animation: reveal-shake 0.14s ease-in-out infinite; }
+  .reveal-flip { animation: reveal-flip 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+  .reveal-slam { animation: reveal-slam 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+  .reveal-pulse { animation: reveal-pulse 0.5s ease-in-out infinite; }
+  .reveal-confetti { animation: reveal-confetti var(--fall) cubic-bezier(0.3, 0.6, 0.6, 1) var(--delay) both; }
+}
+.reveal-fade-up { animation: reveal-fade-up 0.35s ease-out both; }
+.reveal-flash { animation: reveal-flash 2.4s ease-in-out both; }

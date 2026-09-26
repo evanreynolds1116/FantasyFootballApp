@@ -4,7 +4,7 @@
  * person has tapped or typed on the page; `unlockAudio` runs on the first
  * such gesture. Vibration works on Android; iPhones ignore it.
  */
-export type Cue = "turn" | "warning" | "reveal" | "won";
+export type Cue = "turn" | "warning" | "reveal" | "won" | "tick" | "thud";
 
 export type AlertPrefs = { sound: boolean; vibrate: boolean };
 
@@ -59,6 +59,13 @@ const TUNES: Record<Cue, [number, number, number][]> = {
     [523, 0, 0.4],
     [784, 0, 0.4],
   ],
+  // Drumroll tick while the sealed bids shake.
+  tick: [[1568, 0, 0.035]],
+  // A card flipping over.
+  thud: [
+    [131, 0, 0.16],
+    [196, 0, 0.1],
+  ],
   // Little arpeggio: you won the player.
   won: [
     [523, 0, 0.14],
@@ -72,7 +79,9 @@ const BUZZ: Record<Cue, number[]> = {
   turn: [200, 100, 200],
   warning: [80, 70, 80, 70, 80],
   reveal: [60],
-  won: [80, 60, 80, 60, 220],
+  won: [120, 60, 120, 60, 500],
+  tick: [],
+  thud: [25],
 };
 
 function play(cue: Cue): void {
@@ -85,7 +94,7 @@ function play(cue: Cue): void {
     osc.frequency.value = freq;
     // Quick attack, exponential fade so notes don't click.
     gain.gain.setValueAtTime(0.0001, start + offset);
-    gain.gain.exponentialRampToValueAtTime(0.25, start + offset + 0.015);
+    gain.gain.exponentialRampToValueAtTime(cue === "tick" ? 0.08 : 0.25, start + offset + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + length);
     osc.connect(gain).connect(ctx.destination);
     osc.start(start + offset);
@@ -93,7 +102,7 @@ function play(cue: Cue): void {
   }
 }
 
-export function fireCue(cue: Cue, prefs: AlertPrefs): void {
+export function fireCue(cue: Cue, prefs: AlertPrefs = loadPrefs()): void {
   if (prefs.sound) play(cue);
-  if (prefs.vibrate && canVibrate()) navigator.vibrate(BUZZ[cue]);
+  if (prefs.vibrate && canVibrate() && BUZZ[cue].length > 0) navigator.vibrate(BUZZ[cue]);
 }

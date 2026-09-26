@@ -47,7 +47,7 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
         {!snapshot ? (
           <div className="flex flex-grow items-center justify-center text-muted">Loading draft…</div>
         ) : reveal ? (
-          <RevealScreen reveal={reveal} />
+          <RevealScreen reveal={reveal} withSound />
         ) : lot?.state === "tieRebid" ? (
           <TieRebidScreen lot={lot} />
         ) : snapshot.phase === "auction" && snapshot.nominationTurnTeamId !== null ? (

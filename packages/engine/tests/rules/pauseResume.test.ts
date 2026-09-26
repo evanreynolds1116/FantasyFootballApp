@@ -3,6 +3,7 @@ import { makeCtx, makePlayerPool, makeState, nominateFullRound } from "../helper
 import { applyAdminStart } from "../../src/rules/start.js";
 import { applyNominate } from "../../src/rules/nomination.js";
 import { applyAdminBreak, applyAdminPause, applyAdminResume, BACK_IN_MS } from "../../src/rules/pauseResume.js";
+import { REVEAL_HOLD_MS } from "../../src/clock.js";
 import { applyBidSubmit } from "../../src/rules/bidding.js";
 import { applyLotExpired } from "../../src/rules/reveal.js";
 import { beginSnake, applyPickMake } from "../../src/rules/snake.js";
@@ -73,7 +74,8 @@ describe("pause / resume / break", () => {
     s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot.id }, ctx).state;
     expect(s.lots.find((l) => l.id === lot.id)?.state).toBe("tieRebid");
     const tieEndsAt = s.lots.find((l) => l.id === lot.id)!.endsAt!;
-    const laterCtx = { ...ctx, now: ctx.now + 5000 };
+    // 5 s into the tie clock, which starts once the reveal has played.
+    const laterCtx = { ...ctx, now: ctx.now + REVEAL_HOLD_MS + 5000 };
     const res = applyAdminPause(s, { type: "admin:pause" }, laterCtx);
     const pausedLot = res.state.lots.find((l) => l.id === lot.id)!;
     expect(pausedLot.endsAt).toBeNull();

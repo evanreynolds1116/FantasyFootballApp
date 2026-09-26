@@ -1,6 +1,6 @@
 import type { Action } from "../actions/types.js";
 import type { Ctx } from "../clock.js";
-import { endsAtFor } from "../clock.js";
+import { afterReveal, endsAtFor } from "../clock.js";
 import { allocateId, bumpVersion } from "../model/state.js";
 import type { Bid, DraftState, Lot, TeamId } from "../model/types.js";
 import { remainingBudget } from "../selectors/budget.js";
@@ -19,7 +19,8 @@ function draftNumberOf(state: DraftState, teamId: TeamId): number {
   return state.teams.find((t) => t.id === teamId)?.draftNumber ?? Number.POSITIVE_INFINITY;
 }
 
-function resolveFallback(state: DraftState, lot: Lot, tiedTeamIds: TeamId[], topAmount: number, ctx: Ctx): ReduceResult {
+/** `clockCtx` starts whatever comes next (after a reveal, if one is playing); `ctx` is the real time. */
+function resolveFallback(state: DraftState, lot: Lot, tiedTeamIds: TeamId[], topAmount: number, ctx: Ctx, clockCtx: Ctx = ctx): ReduceResult {
   const method = state.settings.tieFallback;
   const fallbackLot: Lot = { ...lot, state: "fallback", tiedTeamIds };
 
@@ -41,7 +42,7 @@ function resolveFallback(state: DraftState, lot: Lot, tiedTeamIds: TeamId[], top
   const events: Event[] = [{ type: "lot:fallback", lotId: lot.id, method, winnerTeamId }];
   const nextState = bumpVersion({ ...state, lots: state.lots.map((l) => (l.id === lot.id ? fallbackLot : l)) });
   const awarded = awardAuctionLot(nextState, fallbackLot, winnerTeamId, topAmount, ctx);
-  const advanced = advanceAfterLotResolved(awarded.state, ctx);
+  const advanced = advanceAfterLotResolved(awarded.state, clockCtx);
   return { state: advanced.state, events: [...events, ...awarded.events, ...advanced.events] };
 }
 
@@ -56,6 +57,7 @@ export function startTieRebidRound(
   tiedTeamIds: TeamId[],
   nextRoundNumber: number,
   ctx: Ctx,
+  clockCtx: Ctx = ctx,
 ): ReduceResult {
   const { topAmount } = evaluateTopBid(state, lot, tiedTeamIds, lot.tieRound);
   const amount = topAmount as number;
@@ -65,13 +67,13 @@ export function startTieRebidRound(
   const allAllIn = tiedTeamIds.every((teamId) => isAllIn(state, teamId, minRequired));
 
   if (roundLimitReached || allAllIn) {
-    return resolveFallback(state, lot, tiedTeamIds, amount, ctx);
+    return resolveFallback(state, lot, tiedTeamIds, amount, ctx, clockCtx);
   }
 
   const minBidPerTeam: Record<TeamId, number> = {};
   for (const teamId of tiedTeamIds) minBidPerTeam[teamId] = minRequired;
 
-  const endsAt = endsAtFor(ctx.now, state.settings.tieClockSec);
+  const endsAt = endsAtFor(clockCtx.now, state.settings.tieClockSec);
   const nextLot: Lot = { ...lot, state: "tieRebid", tieRound: nextRoundNumber, tiedTeamIds, endsAt };
   const nextState = bumpVersion({ ...state, lots: state.lots.map((l) => (l.id === lot.id ? nextLot : l)) });
   const events: Event[] = [
@@ -93,8 +95,10 @@ function evaluateTieRound(state: DraftState, lot: Lot, ctx: Ctx): ReduceResult {
   const revealEvent: Event = { type: "lot:tieRebidRevealed", lotId: lot.id, tieRound: lot.tieRound, bids: revealedBids };
 
   if (winners.length === 1) {
-    const awarded = awardAuctionLot(state, lot, winners[0] as string, topAmount as number, ctx);
-    const advanced = advanceAfterLotResolved(awarded.state, ctx);
+    // The tie's final result gets the same reveal as any other lot, so what comes next waits for it too.
+    const next = afterReveal(ctx);
+    const awarded = awardAuctionLot({ ...state, revealHoldUntil: next.now }, lot, winners[0] as string, topAmount as number, ctx);
+    const advanced = advanceAfterLotResolved(awarded.state, next);
     return { state: advanced.state, events: [revealEvent, ...awarded.events, ...advanced.events] };
   }
 

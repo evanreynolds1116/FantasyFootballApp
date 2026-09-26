@@ -173,6 +173,14 @@ export type DraftState = {
   resumeHoldUntil: number | null;
 
   /**
+   * Set when bids are revealed: every screen plays the reveal until this
+   * time, and whatever comes next (the next lot, a nomination turn, a tie
+   * re-bid, the snake) has its clock pushed back by it (SPEC: "60 s bid +
+   * 10 s reveal"). Display only, like resumeHoldUntil.
+   */
+  revealHoldUntil: number | null;
+
+  /**
    * Each manager's ranked queue (FR-19), best first. Private: only that
    * manager may ever see it. Auto-nominate and auto-pick take the first
    * player in it that's available (and, for picks, fits the roster). May

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useResumeHold } from "../store/DraftProvider";
+import { useClockHold } from "../store/DraftProvider";
 
 export type Countdown = {
   secondsLeft: number | null;
@@ -16,13 +16,13 @@ function format(secondsLeft: number): string {
 
 /**
  * Ticks off `endsAt` (an absolute server timestamp), frozen while paused and
- * held during the 10-second "back in" countdown after a Resume (the server
- * already pushed every clock back by it). `ignoreHold` is for countdowns that
+ * held during the 10-second "back in" countdown after a Resume and while a
+ * reveal plays (the server already pushed every clock back by them). `ignoreHold` is for countdowns that
  * aren't draft clocks — the break, the reveal, the back-in countdown itself.
  */
 export function useCountdown(endsAt: number | null, paused: boolean, { ignoreHold = false }: { ignoreHold?: boolean } = {}): Countdown {
   const [now, setNow] = useState(() => Date.now());
-  const hold = useResumeHold();
+  const hold = useClockHold();
 
   useEffect(() => {
     if (endsAt === null || paused) return;

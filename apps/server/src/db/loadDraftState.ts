@@ -57,6 +57,7 @@ export async function loadDraftState(db: Db, draftId: string): Promise<DraftStat
     // Drafts saved before these fields existed.
     commishLog: bookkeeping.commishLog ?? [],
     resumeHoldUntil: bookkeeping.resumeHoldUntil ?? null,
+    revealHoldUntil: bookkeeping.revealHoldUntil ?? null,
     queues,
   };
 }

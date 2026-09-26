@@ -39,6 +39,7 @@ export function createInitialState(
     unavailablePlayerIds: [],
     commishLog: [],
     resumeHoldUntil: null,
+    revealHoldUntil: null,
     queues: {},
 
     lastAwardOrPick: null,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useDraft, useResumeHold } from "../../store/DraftProvider";
+import { useClockHold, useDraft } from "../../store/DraftProvider";
 import { canVibrate, fireCue, loadPrefs, savePrefs, unlockAudio, type AlertPrefs } from "./cues";
 import { myTurn } from "./myTurn";
 
@@ -7,18 +7,18 @@ const WARNING_MS = 10_000;
 
 /**
  * Plays FR-20's cues from the live snapshot: "you're on the clock" when a
- * nomination, tie re-bid or pick turn becomes yours; a 10-second warning while
- * you still haven't acted (bids included); and a chime on every reveal (a
- * brighter one if you won). Purely client-side — it only reacts to state the
+ * nomination, tie re-bid or pick turn becomes yours, and a 10-second warning
+ * while you still haven't acted (bids included). Reveal cues belong to the
+ * reveal screen's show. Purely client-side — it only reacts to state the
  * server already sent.
  */
 function useDraftAlerts(prefs: AlertPrefs) {
-  const { snapshot, reveal } = useDraft();
+  const { snapshot } = useDraft();
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
   const turn = snapshot ? myTurn(snapshot) : null;
   const paused = snapshot?.paused ?? false;
-  const hold = useResumeHold();
+  const hold = useClockHold();
 
   // Audio can only start after a gesture; the first tap or key anywhere unlocks it.
   useEffect(() => {
@@ -47,7 +47,7 @@ function useDraftAlerts(prefs: AlertPrefs) {
   useEffect(() => {
     if (turnKey === null || endsAt === null || paused) return;
     const check = () => {
-      // During the back-in countdown the clock hasn't started, so time left is measured from its end.
+      // During a back-in countdown or a reveal the clock hasn't started, so time left is measured from its end.
       const left = endsAt - Math.max(Date.now(), hold ?? 0);
       if (armed.current?.key !== turnKey) armed.current = { key: turnKey, warned: left <= WARNING_MS };
       if (!armed.current.warned && left <= WARNING_MS && left > 0) {
@@ -60,15 +60,7 @@ function useDraftAlerts(prefs: AlertPrefs) {
     return () => clearInterval(id);
   }, [turnKey, endsAt, paused, hold]);
 
-  const lastReveal = useRef<string | null>(null);
-  const myTeamId = snapshot?.myTeamId ?? null;
-  useEffect(() => {
-    if (!reveal) return;
-    const id = `${reveal.lotId}:${reveal.until}`;
-    if (id === lastReveal.current) return;
-    lastReveal.current = id;
-    fireCue(myTeamId !== null && reveal.winnerTeamId === myTeamId ? "won" : "reveal", prefsRef.current);
-  }, [reveal, myTeamId]);
+  // Reveal sounds (drumroll, flips, the win) are played by RevealScreen, in step with its show.
 }
 
 function BellIcon({ muted }: { muted: boolean }) {

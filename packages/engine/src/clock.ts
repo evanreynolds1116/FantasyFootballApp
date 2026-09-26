@@ -14,6 +14,14 @@ export type Ctx = {
 
 export const EARLY_CLOSE_LAST_CHANCE_MS = 3000;
 
+/** How long every screen shows a reveal before play moves on (SPEC's "10 s reveal"). */
+export const REVEAL_HOLD_MS = 10_000;
+
+/** The ctx for starting whatever comes after a reveal: its clock begins once the reveal has played. */
+export function afterReveal(ctx: Ctx): Ctx {
+  return { ...ctx, now: ctx.now + REVEAL_HOLD_MS };
+}
+
 /** endsAt for a clock starting now, or null if the clock is off. */
 export function endsAtFor(now: number, clockSec: ClockSetting): number | null {
   return clockSec === "off" ? null : now + clockSec * 1000;

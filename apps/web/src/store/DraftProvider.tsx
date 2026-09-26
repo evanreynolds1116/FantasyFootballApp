@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { CommishEdit } from "@draft-app/engine";
+import { REVEAL_HOLD_MS, type CommishEdit } from "@draft-app/engine";
 import type { Socket } from "socket.io-client";
 import type { DraftSnapshot, RevealedBid, RevealPayload } from "../lib/contracts";
 import { createDraftSocket, joinDraft, resync } from "../lib/socket";
@@ -9,8 +9,8 @@ export type ConnectionStatus = "connecting" | "connected" | "reconnecting";
 /** How long a commissioner edit's notice stays up. */
 const NOTICE_DISPLAY_MS = 8_000;
 
-/** How long a reveal stays on screen before every client falls back to the live view. SPEC.md's own worked example assumes ~10s. */
-const REVEAL_DISPLAY_MS = 10_000;
+/** How long a reveal stays on screen: exactly as long as the server holds the next clock for it. */
+const REVEAL_DISPLAY_MS = REVEAL_HOLD_MS;
 
 type DraftContextValue = {
   snapshot: DraftSnapshot | null;
@@ -70,10 +70,10 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
     // skipping straight to the next screen.
     let lastTieReveal: { lotId: string; bids: RevealedBid[] } | null = null;
 
-    const armReveal = (payload: { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null; passes?: number }) => {
+    const armReveal = (payload: { lotId: string; bids: RevealedBid[]; winnerTeamId: string | null; passes?: number; afterTie?: boolean }) => {
       if (revealTimeout) clearTimeout(revealTimeout);
       const until = Date.now() + REVEAL_DISPLAY_MS;
-      setReveal({ ...payload, passes: payload.passes ?? 0, until });
+      setReveal({ ...payload, passes: payload.passes ?? 0, afterTie: payload.afterTie ?? false, until });
       revealTimeout = setTimeout(() => setReveal(null), REVEAL_DISPLAY_MS);
     };
 
@@ -160,7 +160,7 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
       if (eventName === "lot:awarded") {
         const raw = payload as RawAwarded;
         if (lastTieReveal && lastTieReveal.lotId === raw.lotId) {
-          armReveal({ lotId: raw.lotId, bids: lastTieReveal.bids, winnerTeamId: raw.teamId });
+          armReveal({ lotId: raw.lotId, bids: lastTieReveal.bids, winnerTeamId: raw.teamId, afterTie: true });
           lastTieReveal = null;
         }
       }
@@ -192,6 +192,13 @@ export function DraftProvider({ token, draftId, children }: { token: string; dra
  */
 export function useResumeHold(): number | null {
   return useContext(DraftContext)?.snapshot?.resumeHoldUntil ?? null;
+}
+
+/** Until when every draft clock holds: a back-in countdown or a reveal still playing. Null when neither. */
+export function useClockHold(): number | null {
+  const snapshot = useContext(DraftContext)?.snapshot;
+  const hold = Math.max(snapshot?.resumeHoldUntil ?? 0, snapshot?.revealHoldUntil ?? 0);
+  return hold > 0 ? hold : null;
 }
 
 export function useDraft(): DraftContextValue {

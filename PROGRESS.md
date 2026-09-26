@@ -10,7 +10,8 @@ live "nominated this round" list to the nominate screen and big board.
 Then (same day) built the watchlist/queue (FR-19), sounds and vibration
 (FR-20), and closed the commissioner console gaps (edit budget/roster, void
 lot, injuries, 10-second "back in" countdown), then real sign-in (email code
-+ magic link).
++ magic link), then turned the reveal into a build-up show with the next
+clock held until it's over, and refreshed the README and all its screenshots.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -18,7 +19,7 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-234 tests, full 12-team scripted draft acceptance test. Committed.
+238 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
@@ -137,6 +138,38 @@ architecture, the stack, setup and the API.
   auto-pick the first queued player who fits the roster, each falling back
   to the old best-available rule. Verified live in headless Chrome
   (lobby queue → auto-nominate → snake auto-pick), no page errors.
+- **Reveal show** (`components/reveal/RevealScreen.tsx`, `revealTimeline.ts`).
+  The user found the reveal anticlimactic; decisions: the full ~8 s show,
+  hold the next lot until the reveal ends, a "You won!" moment and a
+  drumroll (not chosen: record badges, tap to skip).
+  - Show, timed from the `lot:reveal` message so every screen is in step:
+    face-down card per locked-in entry shaking to a speeding-up drumroll
+    (2.4 s) → runner-ups the reveal setting allows flip lowest first, a thud
+    each (gaps shrink so even "all bids" fits) → "And the winner is…" (1 s) →
+    winner card slams, price counts up from the best runner-up, "won by $N",
+    confetti → hidden bids/passes become padlocks, budget/spots tiles and
+    "Up next · clock starts in". Winner's own phone: full-screen "You won!"
+    + long buzz. Ties slam "It's a tie!". A tie's final result gets the same
+    show (`afterTie`). Reduced motion keeps the stages without the motion.
+    Sounds only on the draft screen (the big board is silent); reveal cues
+    moved out of DraftAlerts into the show.
+  - Engine: `REVEAL_HOLD_MS` (10 s) and `afterReveal(ctx)` in `clock.ts`.
+    Whatever follows a reveal — next lot, next nomination round, tie re-bid,
+    snake — starts its clock from now + 10 s; awards keep the real time.
+    `revealHoldUntil` in state (persisted in the bookkeeping jsonb) lets
+    clients hold clock readouts (`useClockHold`), like the back-in hold;
+    pausing during a reveal banks the whole next clock. This was a real bug
+    before: the next lot's bid clock ran during the reveal. Adds ~10 s per
+    lot, which SPEC's "60 s bid + 10 s reveal" already assumed.
+  - `tests/rules/revealHold.test.ts` (4) and `revealTimeline.test.ts` (7);
+    one tie/pause test moved past the reveal. Verified live on a phone:
+    stage screenshots, vibration order, next clock at a full 60 s.
+- **README refresh**: text brought up to date (queue, alerts, reveal show,
+  console edits, sign-in, API/data model) and every screenshot re-shot from
+  a new demo draft (`walkthrough2.mjs` in the scratchpad: signs in with real
+  email codes read from the server log), plus new ones for the sign-in code,
+  reveal stages, tie slam, snake queue, alerts menu, commissioner notice and
+  the big board's reveal.
 - **Email sign-in** (FR-02, `routes/LoginRoute.tsx`, `VerifyLinkRoute.tsx`,
   `components/login/`; server `http/routes/auth.ts`, `mail/mailer.ts`).
   Decisions from the user: pluggable mailer (pick the provider later), link
@@ -371,6 +404,8 @@ Walkthrough, manual test and nominations session (2026-09-26):
 - **Pre-draft gaps:** no team avatars (optional in FR-02), no "mock round"
   (SPEC Flow 1 step 5), players can be added/removed but not edited, and the
   live MFL player import is still phase 4 (CSV of an MFL export works).
+- **The big board's reveal uses the phone layout**, centered on the TV — readable
+  but small; a TV-sized version of the show would suit the room better.
 - **Sign-in emails aren't really sent yet** — they're printed to the server
   console until `RESEND_API_KEY`/`MAIL_FROM` are set (do it with hosting;
   Resend needs a domain you own to email anyone but yourself).
@@ -390,7 +425,7 @@ Walkthrough, manual test and nominations session (2026-09-26):
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
   data, CSV parsing, rules summary, start checks, results log/CSV,
-  nomination slots / unavailable reasons, whose turn it is, commissioner edit text — 48 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
+  nomination slots / unavailable reasons, whose turn it is, commissioner edit text, the reveal timeline — 55 tests) are unit-tested; screens are verified by hand. No Playwright suite yet.
 - **Bid acks under a rush still exceed SPEC's 300 ms** for the last of 12
   simultaneous bidders (~0.7 s) because actions are persisted one at a time
   per draft and each save is ~2 round trips to the remote dev DB. A database
@@ -446,7 +481,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the sign-in commit. Note `pnpm run typecheck`
+  packages as of the reveal-show commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with
@@ -457,7 +492,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
 - Demo drafts can now be set up through the UI (or POST /leagues + POST
   /invites/:code/claim) — no more direct `update team set user_id` needed.
 - The session scratchpad holds `mock_draft.mjs` (full scripted run),
-  `bots.mjs` (manual test bots), `walkthrough.mjs` (demo draft +
+  `bots.mjs` (manual test bots), `walkthrough2.mjs` (demo draft +
   screenshots) — none are in the repo; check the useful ones in before
   relying on them.
 - The Supabase dev DB from this session still has several leftover test

@@ -69,7 +69,13 @@ The same screens and rules on every device; only the layout changes.
 - Right: every team's max bid, spots filled and count at the live lot's position; teams that can't bid on this player are greyed with the reason; your row highlighted; broke teams in warn color.
 
 ### 3. Reveal (`Reveal.dc.html`)
-- All screens flip at the same moment on `lot:reveal`.
+- All screens start the same ~8-second show at the same moment on `lot:reveal`, and the server holds the next clock (next lot, nomination turn, tie re-bid or snake pick) until the 10-second reveal is over:
+  1. "Bidding closed": one face-down card per locked-in entry (bids and passes look the same), shaking to a speeding-up drumroll (~2.4 s).
+  2. Runner-ups the reveal setting allows flip one by one, lowest first, with a thud each.
+  3. "And the winner is…" pulses for a beat.
+  4. The winner's amber card slams down, the price counting up from the best runner-up, then "won by $N"; confetti. On the winner's own screen a full-screen "You won!" flash and a long buzz. A tie instead slams "It's a tie!" with the tied teams and amounts.
+  5. Cards that stay hidden turn into padlocks ("N bids stay sealed · N passed"); the budget/spots tiles and "Up next · clock starts in" appear.
+- Motion is skipped for anyone who prefers reduced motion (the stages still play); the result is announced to screen readers when the top card flips. The big board plays the same show without sound.
 - Amber winner card: team number and name, price in large display type.
 - Runner-up rows as allowed by the reveal setting (default 2), then "N other bids stay hidden" and "N teams passed" (a count, never who).
 - Tiles showing the winner's budget before → after and auction spots now filled.
@@ -120,7 +126,8 @@ The same screens and rules on every device; only the layout changes.
 - **Reconnecting:** a small banner "Reconnecting…"; inputs disabled until the snapshot arrives.
 - **Not your turn / not eligible:** controls disabled with the reason in words.
 - **Last 10 seconds:** clock turns warn color; a warning sound/vibration if you still have to act (FR-20).
-- **Alerts (FR-20):** a bell in the draft header opens Sounds and Vibration switches (remembered per device; vibration hidden where unsupported, e.g. iPhone) and a Test button. Cues: rising chime when it becomes your turn to nominate, re-bid or pick; three ticks at 10 seconds left; a bell on each reveal, an arpeggio if you won. Browsers need one tap on the page before sound can play. On narrow phones the header's "Connected" shrinks to its green dot.
+- **During a reveal:** the next clock holds (it hasn't started), just like during the back-in countdown.
+- **Alerts (FR-20):** a bell in the draft header opens Sounds and Vibration switches (remembered per device; vibration hidden where unsupported, e.g. iPhone) and a Test button. Cues: rising chime when it becomes your turn to nominate, re-bid or pick; three ticks at 10 seconds left; during a reveal a drumroll, a thud per flipped card, then a bell (or an arpeggio and a long buzz if you won). Browsers need one tap on the page before sound can play. On narrow phones the header's "Connected" shrinks to its green dot.
 
 ## Accessibility
 - Real `<button>`, `<input>` and `<label>` elements; icon-only buttons have `aria-label`.

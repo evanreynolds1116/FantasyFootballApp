@@ -178,6 +178,7 @@ stateDiagram-v2
 - A bid is an upsert keyed by (lot, team, tie round); the latest one before close counts. A pass is the same kind of entry with no amount, so bid → pass → bid just replaces it.
 - Server validation: team eligible, amount ≥ minimum bid, multiple of the bid step, ≤ remaining budget, within position maximums, and on a tie re-bid, ≥ that team's previous bid + the minimum tie raise.
 - Amounts are stored server-side only and never shown to anyone before reveal — including the commissioner, who is usually drafting too. The only pre-reveal broadcast is `{teamId, hasBid: true}`.
+- The reveal takes 10 seconds on every screen (a short build-up, then the result); whatever comes next — the next lot, the next nomination turn, a tie re-bid round or the snake — starts its clock only after it. A tie's final result gets the same reveal.
 - Reveal sends only what the reveal setting allows (default: winner + next two bids, with team names), in one message, so all screens flip together; hidden losing bids never leave the server. Tie re-bid amounts are always revealed in full. The audit log keeps every bid.
 - Award is one database transaction: lot result, winner's budget, roster slot, player marked drafted, audit entry.
 

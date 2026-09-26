@@ -51,5 +51,7 @@ export type RevealPayload = {
   winnerTeamId: string | null;
   /** How many teams passed on the lot — a count only, never who. */
   passes: number;
+  /** The final result of a tie (its last re-bid round's amounts), not a lot's first close. */
+  afterTie: boolean;
   until: number;
 };

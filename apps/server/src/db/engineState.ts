@@ -23,6 +23,7 @@ export type EngineBookkeeping = {
   unavailablePlayerIds: string[];
   commishLog: DraftState["commishLog"];
   resumeHoldUntil: number | null;
+  revealHoldUntil: number | null;
   lastAwardOrPick: DraftState["lastAwardOrPick"];
 };
 
@@ -44,6 +45,7 @@ export function extractBookkeeping(state: DraftState): EngineBookkeeping {
     unavailablePlayerIds: state.unavailablePlayerIds,
     commishLog: state.commishLog,
     resumeHoldUntil: state.resumeHoldUntil,
+    revealHoldUntil: state.revealHoldUntil,
     lastAwardOrPick: state.lastAwardOrPick,
   };
 }

@@ -9,8 +9,9 @@ import { ok, type ReduceResult } from "./result.js";
 /** Freezes whichever single clock is currently running, storing its remainingMs. Returns the remaining ms captured, if any. */
 export function freezeCurrentClock(state: DraftState, ctx: Ctx): { state: DraftState; remainingMs: number | null } {
   // Pausing during a "back in" countdown: the unused part of the countdown isn't clock time, so it isn't banked.
-  const from = Math.max(ctx.now, state.resumeHoldUntil ?? 0);
-  const cleared = { ...state, resumeHoldUntil: null };
+  // Likewise for a reveal still playing: the clock hadn't started yet.
+  const from = Math.max(ctx.now, state.resumeHoldUntil ?? 0, state.revealHoldUntil ?? 0);
+  const cleared = { ...state, resumeHoldUntil: null, revealHoldUntil: null };
   const lot = currentLot(state);
   if (lot && (lot.state === "open" || lot.state === "tieRebid") && lot.endsAt !== null) {
     const remainingMs = lot.endsAt - from;
