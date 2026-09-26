@@ -10,7 +10,7 @@ import {
   connectSocket,
   createDevSession,
   createDraftForLeague,
-  createLeague,
+  createLeagueUnchecked,
   emitIntent,
   joinDraft,
   waitForConnect,
@@ -41,7 +41,7 @@ describe("restart mid-lot loses nothing (phase 2 acceptance test)", () => {
       const commissioner = await createDevSession(baseUrl1, "Commish");
       const managerA = await createDevSession(baseUrl1, "Manager A");
 
-      const created = await createLeague(baseUrl1, commissioner.token, {
+      const created = await createLeagueUnchecked(server1, commissioner.userId, {
         name: "Restart Test League",
         // Generous relative to Supabase round-trip latency during setup —
         // this test verifies ordinary timer survival, not downtime recovery
@@ -160,7 +160,7 @@ describe("restart mid-lot loses nothing (phase 2 acceptance test)", () => {
       const commissioner = await createDevSession(baseUrl1, "Commish");
       const managerA = await createDevSession(baseUrl1, "Manager A");
 
-      const created = await createLeague(baseUrl1, commissioner.token, {
+      const created = await createLeagueUnchecked(server1, commissioner.userId, {
         name: "Downtime Recovery League",
         settings: { auctionSpots: 1, rosterSize: 1, positionGroups: null, bidClockSec: 2, tieClockSec: 5, earlyClose: false },
         teams: [{ name: "Team A" }],

@@ -40,7 +40,6 @@ describe("persistence round-trip (no network layer)", () => {
       revealTopN: "3",
       pickExpiryAction: DEFAULT_SETTINGS.pickExpiryAction,
       brokeTeamsFillAtEnd: DEFAULT_SETTINGS.brokeTeamsFillAtEnd,
-      nominatorMustBid: DEFAULT_SETTINGS.nominatorMustBid,
       positionGroups: null,
     });
 

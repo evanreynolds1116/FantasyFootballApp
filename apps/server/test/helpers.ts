@@ -3,7 +3,9 @@ import { eq } from "drizzle-orm";
 import { io as ioClient, type Socket } from "socket.io-client";
 import { buildServer } from "../src/buildServer.js";
 import type { Db } from "../src/db/client.js";
-import { draft, team, user, league } from "../src/db/schema.js";
+import { DEFAULT_SETTINGS, type DraftSettings } from "@draft-app/engine";
+import { settingsToRow } from "../src/db/mappers.js";
+import { draft, draftSettings, team, user, league } from "../src/db/schema.js";
 
 export async function startTestServer() {
   const app = await buildServer({ logger: false });
@@ -53,6 +55,28 @@ export async function createDraftForLeague(baseUrl: string, token: string, leagu
   });
   if (!res.ok) throw new Error(`POST /leagues/:id/drafts failed: ${res.status} ${await res.text()}`);
   return (await res.json()) as { draftId: string };
+}
+
+/**
+ * Test-only: creates a league straight in the database, skipping POST
+ * /leagues' SPEC range validation. For engine-level scenarios that need
+ * deliberately out-of-range settings (a 1-team league, a 2-second clock).
+ * Mirrors the route's inserts; returns the same shape as createLeague.
+ */
+export async function createLeagueUnchecked(
+  app: Awaited<ReturnType<typeof buildServer>>,
+  commissionerUserId: string,
+  body: { name: string; settings?: Partial<DraftSettings>; teams: { name: string }[] },
+) {
+  const settings: DraftSettings = { ...DEFAULT_SETTINGS, ...body.settings, teamCount: body.teams.length };
+  const [row] = await app.db.insert(league).values({ name: body.name, commissionerUserId }).returning({ id: league.id });
+  const leagueId = row!.id;
+  await app.db.insert(draftSettings).values(settingsToRow(leagueId, settings));
+  const teams = await app.db
+    .insert(team)
+    .values(body.teams.map((t, i) => ({ leagueId, name: t.name, draftNumber: i + 1 })))
+    .returning({ id: team.id, draftNumber: team.draftNumber });
+  return { leagueId, teams: teams.sort((a, b) => a.draftNumber - b.draftNumber) };
 }
 
 /** Dev-only test shortcut: directly assigns a team to a user, bypassing the (phase-3) invite/claim flow. */

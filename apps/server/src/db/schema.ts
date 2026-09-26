@@ -72,6 +72,8 @@ export const league = pgTable("league", {
   commissionerUserId: uuid("commissioner_user_id")
     .notNull()
     .references(() => user.id),
+  /** The league's one reusable invite code (/join/:code). Nullable only for leagues created before invites existed. */
+  inviteCode: text("invite_code").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -100,7 +102,6 @@ export const draftSettings = pgTable("draft_settings", {
   revealTopN: text("reveal_top_n").notNull(),
   pickExpiryAction: pickExpiryActionEnum("pick_expiry_action").notNull(),
   brokeTeamsFillAtEnd: boolean("broke_teams_fill_at_end").notNull(),
-  nominatorMustBid: boolean("nominator_must_bid").notNull(),
   /** Array of { name, positions, min, max }; null = position limits off. */
   positionGroups: jsonb("position_groups"),
 });
@@ -116,7 +117,11 @@ export const team = pgTable(
     name: text("name").notNull(),
     draftNumber: integer("draft_number").notNull(),
   },
-  (t) => [uniqueIndex("team_league_draft_number_idx").on(t.leagueId, t.draftNumber)],
+  (t) => [
+    uniqueIndex("team_league_draft_number_idx").on(t.leagueId, t.draftNumber),
+    // One team per manager per league — enforced here so two racing claims can't both win.
+    uniqueIndex("team_league_user_idx").on(t.leagueId, t.userId).where(sql`${t.userId} is not null`),
+  ],
 );
 
 export const player = pgTable(

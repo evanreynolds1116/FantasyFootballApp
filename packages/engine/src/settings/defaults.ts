@@ -20,7 +20,6 @@ export const DEFAULT_SETTINGS: DraftSettings = {
   minBid: 5,
   bidStep: 1,
   tieMinRaise: 5,
-  nominatorMustBid: false,
   noBidAction: "awardNominator",
   nominationOrder: "snake",
   nominationClockSec: 30,

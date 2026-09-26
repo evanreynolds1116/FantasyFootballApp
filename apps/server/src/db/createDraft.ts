@@ -1,12 +1,12 @@
 import { createInitialState } from "@draft-app/engine";
 import { eq } from "drizzle-orm";
-import type { Db } from "./client.js";
+import type { DbOrTx } from "./client.js";
 import { extractBookkeeping } from "./engineState.js";
 import { playerFromRow, settingsFromRow, teamFromRow } from "./mappers.js";
 import { draft, draftSettings, player, team } from "./schema.js";
 
 /** Instantiates a new `draft` row for a league from its current settings/teams/players, seeded with the engine's initial state. */
-export async function createDraft(db: Db, leagueId: string): Promise<string> {
+export async function createDraft(db: DbOrTx, leagueId: string): Promise<string> {
   const [settingsRow] = await db.select().from(draftSettings).where(eq(draftSettings.leagueId, leagueId)).limit(1);
   if (!settingsRow) throw new Error(`draft_settings missing for league ${leagueId}`);
 

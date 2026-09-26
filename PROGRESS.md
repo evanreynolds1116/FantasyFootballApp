@@ -1,7 +1,7 @@
 # Progress notes — read this first when picking the project back up
 
 Last updated 2026-09-26, after the session that built the Commissioner console,
-fixed undo to match SPEC, and built Rosters & budgets.
+fixed undo to match SPEC, and built Rosters & budgets, League setup and the Lobby.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -9,21 +9,41 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-179 tests, full 12-team scripted draft acceptance test. Committed.
+191 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests (now 23) including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 30) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
-**Phase 3 — UI (`apps/web`)**: in progress. Every draft-day screen is built
-and manually verified against a live server; what's missing is the pre-draft
-flow (League setup + Lobby). Committed (`597aa7a`, `49b5083`, plus the Rosters
-& budgets commit).
+**Phase 3 — UI (`apps/web`)**: every screen in SPEC's table is built and
+verified in headless Chrome against a live server, including the pre-draft flow
+(League setup, Lobby, invite/claim). A full setup → join → start → draft run
+works through the UI alone. SPEC's phase-3 "done when" — friends complete a
+mock draft on phones — hasn't happened yet. Committed (`597aa7a`, `49b5083`,
+`dcc84c4`, plus the League setup + Lobby commit).
 
 ## What's actually built and working in apps/web
 
+- **Pre-draft flow** (no mockups exist for these; they follow the draft
+  screens' style):
+  - Home `/` — your leagues with status, create a league, join by code.
+  - League setup `/league/new` (and `/league/:id/settings` to edit before the
+    start) — every SPEC setting with defaults filled in, a plain-English
+    "rules at a glance" summary (`setup/ruleSummary.ts`), and live errors from
+    the engine's own `validateSettings`.
+  - Join `/join/:code` — log in if needed, pick an open team, name it.
+  - Lobby `/league/:id` — polls GET /leagues/:id every 3 s (no draft room
+    exists before Start). Teams in draft order with rename, move up/down,
+    server-side shuffle and "remove manager"; the invite link (copy/replace);
+    the player pool (CSV upload with preview via `lib/playerCsv.ts`, one-off
+    add, browse/remove); rules summary; Start with a warning for unclaimed
+    teams that spells out what their clocks will do. Start is held while a
+    reorder is in flight. Everyone watching is moved into the draft when it
+    starts.
+  - Page paths avoid the API prefixes Vite proxies (`/league/…` pages vs
+    `/leagues` API, `/draft/…` vs `/drafts`) — see `vite.config.ts`.
 - **Infra**: Vite + React + Tailwind (tokens from UI.md's table), React Router,
   a `DraftProvider` that holds one authoritative `DraftSnapshot` per draft and
   refreshes it via `resync` on any server event rather than re-deriving state
@@ -119,15 +139,39 @@ Commissioner-console session:
 - `restart-recovery.test.ts` now only checks its own draft's recovery — it
   was failing because leftover dev-DB drafts also got "recovered".
 
+League setup + Lobby session:
+- **Settings validation** (`packages/engine/src/settings/validate.ts`):
+  SPEC's ranges plus "position minimums must fit the roster". POST and PATCH
+  /leagues reject anything else. Reveal top-N is allowed up to 20 regardless
+  of team count (top 3 in a 2-team league just shows every bid).
+- **New routes**: GET /leagues, GET/PATCH /leagues/:id (team-count changes
+  add/remove unclaimed slots, never evict a manager), POST
+  /leagues/:id/invites, GET /invites/:code, POST /invites/:code/claim, PATCH
+  /leagues/:id/teams/:teamId, DELETE /leagues/:id/teams/:teamId/manager,
+  POST /leagues/:id/draft-order/shuffle, GET/POST/DELETE
+  /leagues/:id/players (POST takes `replace`), POST /leagues/:id/start.
+  POST /leagues makes placeholder slots "Team 1..N" when no team names are
+  given. Every setup edit returns 409 LOCKED once the league has a draft.
+- **The draft row is now created at Start** (POST /leagues/:id/start creates
+  it and applies admin:start), so lobby edits never go stale in the runtime's
+  in-memory state. Start requires a pool of at least teams × roster size.
+- **Migrations**: `0003_league_invites` (league.invite_code, plus a unique
+  (league_id, user_id) index so one person can't hold two teams in a league)
+  and `0004_drop_nominator_must_bid`. Both applied to the Supabase dev DB.
+- **"Nominator must bid on own nominee" was dropped** (user's call,
+  2026-09-26): the engine never enforced it, so it's gone from the settings
+  type, defaults, validator, DB and mappers. SPEC.md still lists it in the
+  settings table — it's deferred, not rejected; re-adding it means engine
+  enforcement + tests + a migration.
+- Tests that need out-of-range leagues (1 team, 2 s clocks) use the test-only
+  `createLeagueUnchecked` helper in `apps/server/test/helpers.ts`.
+- Inline favicon in `apps/web/index.html` — this was the mystery browser 404.
+
 ## Known, intentional gaps (not bugs — flagged as they came up)
 
-- **No pre-draft UI at all.** Every league/team/player/draft used in this
-  session's manual testing was created via throwaway scripts talking directly
-  to the phase-2 HTTP/WS API (see conversation history — scripts were deleted
-  after each use, nothing checked in). There is currently no League setup
-  screen, no Lobby (team join/claim, draft order, start button), and no real
-  invite/claim-team flow. This is the biggest remaining hole before someone
-  could run a real draft end-to-end without me hand-driving the API.
+- **Pre-draft gaps:** no team avatars (optional in FR-02), no "mock round"
+  (SPEC Flow 1 step 5), players can be added/removed but not edited, and the
+  live MFL player import is still phase 4 (CSV of an MFL export works).
 - **Real auth is still phase-4.** Login is the dev-only `/dev/session` shim;
   real magic-link auth was explicitly deferred back in phase 2 planning.
 - **Watchlist/queue isn't built.** Snake pick's "My queue" tab shows an
@@ -148,11 +192,10 @@ Commissioner-console session:
   bidder, so "Your bid is in" shows `•••` instead of a remembered number after
   a refresh. This is real phase-2 secrecy behavior, not a UI bug.
 - **Few automated frontend tests.** Only pure helpers (console text, roster
-  data) are unit-tested; screens are verified by hand. No Playwright suite yet.
+  data, CSV parsing, rules summary, start checks) are unit-tested; screens are
+  verified by hand. No Playwright suite yet.
 - **The big board has no Rosters view** — it's a separate spectator route and
   only shows the teams overview column. Rosters & budgets needs a login.
-- **A browser console 404 on every page load** during headless checks; its
-  source wasn't tracked down (likely a missing favicon — unverified).
 - **Undo doesn't roll back a phase change.** Undoing the award that ended the
   auction leaves the draft in the snake. SPEC is silent; not handled.
 - **Undoing a snake pick doesn't pause** and doesn't give the team its turn
@@ -165,10 +208,9 @@ Commissioner-console session:
 ## What's left
 
 In rough priority order:
-1. **League setup + Lobby** — next up — the pre-draft flow. Bigger than the rest
-   combined: settings form, invite link, team join/claim, draft order
-   assignment, start button. Needed before this app is usable without me
-   scripting the setup by hand.
+1. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
+   Worth a scripted full-length run first (every lot, ties, snake, make-up)
+   to shake out anything the screen-by-screen checks missed.
 2. The console gaps listed above.
 3. Real auth, watchlist/queue, CSV export, settings-editing after creation —
    all previously deferred to phase 3/4, still deferred.
@@ -181,11 +223,13 @@ In rough priority order:
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the Rosters & budgets commit.
+  packages as of the League setup + Lobby commit. Note `pnpm run typecheck`
+  checks the server against the engine's built `dist`, so run `pnpm run build`
+  (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with
   `channel: "chrome"` works (install it in a scratch dir, not the repo).
-- There's still no claim-team route, so demo drafts need a direct
-  `update team set user_id = ...` after `POST /leagues`.
+- Demo drafts can now be set up through the UI (or POST /leagues + POST
+  /invites/:code/claim) — no more direct `update team set user_id` needed.
 - The Supabase dev DB from this session still has several leftover test
   leagues/drafts in it (named things like "Snake Demo League", "Nominate Demo
   League") — harmless, but worth a scoped cleanup pass (by league name, never

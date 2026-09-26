@@ -1,0 +1,1 @@
+ALTER TABLE "draft_settings" DROP COLUMN IF EXISTS "nominator_must_bid";

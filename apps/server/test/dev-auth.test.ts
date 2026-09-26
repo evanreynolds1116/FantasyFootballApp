@@ -21,8 +21,8 @@ describe("dev auth", () => {
     expect(token).toBeTruthy();
     expect(userId).toBeTruthy();
 
-    const { leagueId, teams } = await createLeague(baseUrl, token, { name: "Auth Test League", teams: [{ name: "T1" }] });
-    expect(teams).toHaveLength(1);
+    const { leagueId, teams } = await createLeague(baseUrl, token, { name: "Auth Test League", teams: [{ name: "T1" }, { name: "T2" }] });
+    expect(teams).toHaveLength(2);
 
     await cleanupLeague(app.db, leagueId, [userId]);
   });

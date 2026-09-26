@@ -4,7 +4,9 @@ import { createDb, type Db } from "./db/client.js";
 import { createEngineRuntime, type EngineRuntime } from "./engine/engineRuntime.js";
 import { registerDevRoutes } from "./http/routes/dev.js";
 import { registerDraftRoutes } from "./http/routes/drafts.js";
+import { registerInviteRoutes } from "./http/routes/invites.js";
 import { registerLeagueRoutes } from "./http/routes/leagues.js";
+import { registerPlayerRoutes } from "./http/routes/players.js";
 import "./http/types.js";
 import { broadcastEvents } from "./ws/broadcastEvents.js";
 import { registerSocketServer } from "./ws/registerSocketServer.js";
@@ -61,6 +63,8 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   await app.register(registerDevRoutes);
   await app.register(registerLeagueRoutes);
+  await app.register(registerPlayerRoutes);
+  await app.register(registerInviteRoutes);
   await app.register(registerDraftRoutes);
 
   app.addHook("onClose", async () => {

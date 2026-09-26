@@ -9,7 +9,7 @@ import {
   connectSocket,
   createDevSession,
   createDraftForLeague,
-  createLeague,
+  createLeagueUnchecked,
   emitIntent,
   joinDraft,
   startTestServer,
@@ -31,7 +31,7 @@ describe("reconnect (FR-16)", () => {
     commissioner = await createDevSession(baseUrl, "Commish");
     managerA = await createDevSession(baseUrl, "Manager A");
 
-    const created = await createLeague(baseUrl, commissioner.token, {
+    const created = await createLeagueUnchecked(app, commissioner.userId, {
       name: "Reconnect Test League",
       settings: { auctionSpots: 1, rosterSize: 1, positionGroups: null },
       teams: [{ name: "Team A" }],

@@ -20,3 +20,6 @@ export function createDb(databaseUrl: string = requireDatabaseUrl()) {
 }
 
 export type Db = ReturnType<typeof createDb>["db"];
+
+/** A plain connection or an open transaction — both run the same queries. */
+export type DbOrTx = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];

@@ -18,7 +18,6 @@ export function settingsFromRow(row: DraftSettingsRow): DraftSettings {
     minBid: row.minBid,
     bidStep: row.bidStep,
     tieMinRaise: row.tieMinRaise,
-    nominatorMustBid: row.nominatorMustBid,
     noBidAction: row.noBidAction,
     nominationOrder: row.nominationOrder,
     nominationClockSec: row.nominationClockSec ?? "off",
@@ -57,7 +56,6 @@ export function settingsToRow(leagueId: string, settings: DraftSettings): typeof
     revealTopN: String(settings.revealTopN),
     pickExpiryAction: settings.pickExpiryAction,
     brokeTeamsFillAtEnd: settings.brokeTeamsFillAtEnd,
-    nominatorMustBid: settings.nominatorMustBid,
   };
 }
 

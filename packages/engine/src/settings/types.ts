@@ -27,7 +27,6 @@ export type DraftSettings = {
   minBid: number;
   bidStep: number;
   tieMinRaise: number;
-  nominatorMustBid: boolean;
   noBidAction: NoBidAction;
   nominationOrder: NominationOrder;
   nominationClockSec: ClockSetting;

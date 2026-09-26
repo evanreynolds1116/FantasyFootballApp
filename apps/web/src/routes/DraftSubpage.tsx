@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { ConnectionBadge } from "../components/primitives/ConnectionBadge";
 import { PausedBanner } from "../components/primitives/PausedBanner";
 import { useAuth } from "../lib/auth";
@@ -33,9 +33,10 @@ function Shell({ draftId, children }: { draftId: string; children: ReactNode }) 
 export function DraftSubpage({ children }: { children: ReactNode }) {
   const { draftId } = useParams<{ draftId: string }>();
   const { session } = useAuth();
+  const location = useLocation();
 
   if (!draftId) return <Navigate to="/login" replace />;
-  if (!session) return <Navigate to={`/login?draftId=${draftId}`} replace />;
+  if (!session) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
 
   return (
     <DraftProvider token={session.token} draftId={draftId}>

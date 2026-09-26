@@ -10,7 +10,6 @@ describe("DEFAULT_SETTINGS", () => {
     expect(DEFAULT_SETTINGS.minBid).toBe(5);
     expect(DEFAULT_SETTINGS.bidStep).toBe(1);
     expect(DEFAULT_SETTINGS.tieMinRaise).toBe(5);
-    expect(DEFAULT_SETTINGS.nominatorMustBid).toBe(false);
     expect(DEFAULT_SETTINGS.noBidAction).toBe("awardNominator");
     expect(DEFAULT_SETTINGS.nominationOrder).toBe("snake");
     expect(DEFAULT_SETTINGS.nominationClockSec).toBe(30);

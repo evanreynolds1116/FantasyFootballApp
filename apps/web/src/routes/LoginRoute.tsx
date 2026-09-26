@@ -1,28 +1,35 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+
+/** Only same-app paths are followed after login, never an absolute URL someone put in ?next=. */
+function safeNext(next: string | null): string {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
 
 /** Dev-only login: mints a session via POST /dev/session. Real magic-link auth is a later phase. */
 export function LoginRoute() {
-  const { login } = useAuth();
+  const { session, login } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const next = safeNext(params.get("next"));
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [draftId, setDraftId] = useState(params.get("draftId") ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  if (session) return <Navigate to={next} replace />;
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!displayName.trim() || !draftId.trim()) {
-      setError("Enter your name and the draft ID.");
+    if (!displayName.trim()) {
+      setError("Enter your name.");
       return;
     }
     setBusy(true);
     try {
       await login(displayName.trim(), email.trim() || undefined);
-      navigate(`/draft/${draftId.trim()}`);
+      navigate(next, { replace: true });
     } catch {
       setError("Could not start a session. Is the server running?");
     } finally {
@@ -33,28 +40,23 @@ export function LoginRoute() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <form onSubmit={onSubmit} className="flex w-full max-w-sm flex-col gap-4 rounded-panel border border-line bg-surface p-6">
-        <h1 className="font-display text-2xl font-extrabold uppercase">Join a draft</h1>
+        <h1 className="font-display text-2xl font-extrabold uppercase">Draft Day</h1>
         <label className="flex flex-col gap-1.5 text-sm text-muted">
           Your name
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
+            autoComplete="name"
             className="h-11 rounded-ctl border border-line bg-surface-sunk px-3 text-text outline-none focus:border-accent"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm text-muted">
-          Email (optional — reuse it to return to the same team)
+          Email (optional — use it again to get back to the same team)
           <input
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-11 rounded-ctl border border-line bg-surface-sunk px-3 text-text outline-none focus:border-accent"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm text-muted">
-          Draft ID
-          <input
-            value={draftId}
-            onChange={(e) => setDraftId(e.target.value)}
+            autoComplete="email"
             className="h-11 rounded-ctl border border-line bg-surface-sunk px-3 text-text outline-none focus:border-accent"
           />
         </label>
@@ -64,7 +66,7 @@ export function LoginRoute() {
           </div>
         )}
         <button type="submit" disabled={busy} className="h-12 rounded-ctl bg-accent text-base font-bold uppercase tracking-[0.04em] text-on-accent disabled:opacity-40">
-          {busy ? "Joining…" : "Join"}
+          {busy ? "Signing in…" : "Continue"}
         </button>
       </form>
     </div>

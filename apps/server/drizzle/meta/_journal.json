@@ -22,6 +22,20 @@
       "when": 1790385228619,
       "tag": "0002_boring_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790431730442,
+      "tag": "0003_league_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790433052764,
+      "tag": "0004_drop_nominator_must_bid",
+      "breakpoints": true
     }
   ]
 }

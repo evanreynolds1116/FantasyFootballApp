@@ -18,7 +18,9 @@ function DraftScreenRouter({ draftId }: { draftId: string }) {
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-        <span className="font-display text-lg font-bold uppercase">Draft Day</span>
+        <Link to="/" className="font-display text-lg font-bold uppercase">
+          Draft Day
+        </Link>
         <span className="flex items-center gap-4">
           <Link to={`/draft/${draftId}/rosters`} className="text-sm font-semibold text-muted hover:text-text">
             Rosters
@@ -61,7 +63,7 @@ export function DraftRoute() {
   const { session } = useAuth();
 
   if (!draftId) return <Navigate to="/login" replace />;
-  if (!session) return <Navigate to={`/login?draftId=${draftId}`} replace />;
+  if (!session) return <Navigate to={`/login?next=${encodeURIComponent(`/draft/${draftId}`)}`} replace />;
 
   return (
     <DraftProvider token={session.token} draftId={draftId}>
