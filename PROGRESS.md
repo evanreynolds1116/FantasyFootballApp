@@ -9,7 +9,8 @@ for the league, ran a manual test (user as commissioner + 11 bots), and added a
 live "nominated this round" list to the nominate screen and big board.
 Then (same day) built the watchlist/queue (FR-19), sounds and vibration
 (FR-20), and closed the commissioner console gaps (edit budget/roster, void
-lot, injuries, 10-second "back in" countdown).
+lot, injuries, 10-second "back in" countdown), then real sign-in (email code
++ magic link).
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -22,7 +23,7 @@ and what's next.
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
 Socket.IO wiring, bid secrecy enforced at the snapshot boundary. 18 integration
-tests (now 37) including the literal "restart mid-lot loses nothing" acceptance test.
+tests (now 48) including the literal "restart mid-lot loses nothing" acceptance test.
 Committed (`5936209`, `31e1216`).
 
 **Phase 3 — UI (`apps/web`)**: every screen in SPEC's table is built and
@@ -136,6 +137,33 @@ architecture, the stack, setup and the API.
   auto-pick the first queued player who fits the roster, each falling back
   to the old best-available rule. Verified live in headless Chrome
   (lobby queue → auto-nominate → snake auto-pick), no page errors.
+- **Email sign-in** (FR-02, `routes/LoginRoute.tsx`, `VerifyLinkRoute.tsx`,
+  `components/login/`; server `http/routes/auth.ts`, `mail/mailer.ts`).
+  Decisions from the user: pluggable mailer (pick the provider later), link
+  + 6-digit code, dev login kept for development only, 90-day sessions.
+  - Flow: email → code (or the link, `/login/verify?t=…`) → first time only,
+    pick a display name (`PATCH /me`) → back to `next`. The email is the
+    account; a dev-login account with the same email is taken over, so test
+    teams carry over.
+  - `login_code` table (migration `0008`, applied to the dev DB): hashed
+    code + link, 15 min, single use (using one retires every outstanding
+    code for the address), 5 wrong tries, 5 emails per address per 15 min.
+    Sessions now expire after 90 days; `POST /auth/logout` ends one.
+  - Mail: `RESEND_API_KEY` + `MAIL_FROM` send through Resend's HTTP API;
+    otherwise the email is printed to the server console. `APP_URL` is the
+    link's base.
+  - Dev login: `/dev/session` exists only with `DEV_LOGIN=true` (added to
+    the local, git-ignored `apps/server/.env`; `.env.example` documents
+    it). `GET /auth/config` tells the login page whether to offer it. Test
+    servers turn it on and capture sent mail.
+  - Big board: no longer uses the dev login — `POST /drafts/:id/spectate`
+    gives a watch-only `spec_…` token (one spectator user per draft, 2-day
+    sessions) that every HTTP route refuses.
+  - Web: any 401, or a socket refused as UNAUTHENTICATED, signs out and
+    sends the page to /login. "Switch user" is now "Sign out".
+  - `test/auth.test.ts` (11 tests). Verified live with DEV_LOGIN off in
+    headless Chrome (code on a phone, link on a laptop, big board with no
+    login, sign-out, expired session), no page errors.
 - **Commissioner edits** (FR-14 + SPEC's late-injury edge case,
   `components/commish/LotAndPlayersPanel.tsx`, `RosterEditPanel.tsx`,
   `CommishLogPanel.tsx`). Decisions from the user: budget *and* roster edits,
@@ -343,8 +371,9 @@ Walkthrough, manual test and nominations session (2026-09-26):
 - **Pre-draft gaps:** no team avatars (optional in FR-02), no "mock round"
   (SPEC Flow 1 step 5), players can be added/removed but not edited, and the
   live MFL player import is still phase 4 (CSV of an MFL export works).
-- **Real auth is still phase-4.** Login is the dev-only `/dev/session` shim;
-  real magic-link auth was explicitly deferred back in phase 2 planning.
+- **Sign-in emails aren't really sent yet** — they're printed to the server
+  console until `RESEND_API_KEY`/`MAIL_FROM` are set (do it with hosting;
+  Resend needs a domain you own to email anyone but yourself).
 - **Big board has no league name** — no endpoint currently exposes it to an
   unauthenticated board view, so the header just says "Draft Day".
 - **Big board's "skipped nomination" note is omitted** (e.g. "Team 11 is
@@ -388,13 +417,12 @@ In rough priority order:
 2. **Hosting**, so phones can reach the app: pick a host (SPEC suggests
    Render / Railway / Fly.io, < ~$20/month) with the database in the same
    region (should also fix the bid-ack rush latency), production build,
-   HTTPS, migrations on deploy, PWA manifest. Needs the user's choice of
-   host and whether they have a domain.
+   HTTPS, migrations on deploy, PWA manifest, and a mail provider for
+   sign-in emails (DEV_LOGIN must stay off there). Needs the user's choice
+   of host and whether they have a domain.
 3. **A real mock draft with friends on phones** — SPEC's phase-3 "done when".
-   Decide whether the dev login is acceptable for it (anyone who types
-   someone's email can sign in as them) or magic links come first.
-4. Real auth, a server CSV export route, settings-editing
-   after creation — all previously deferred to phase 3/4, still deferred.
+4. A server CSV export route, settings-editing after creation — previously
+   deferred, still deferred.
 
 ## Mock draft runs
 
@@ -418,11 +446,14 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the commissioner-edits commit. Note `pnpm run typecheck`
+  packages as of the sign-in commit. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with
   `channel: "chrome"` works (install it in a scratch dir, not the repo).
+- Local sign-in: with `DEV_LOGIN=true` in `apps/server/.env` the login
+  page offers the no-check developer login (and the bot scripts'
+  `/dev/session` works). Real sign-in codes appear in the server console.
 - Demo drafts can now be set up through the UI (or POST /leagues + POST
   /invites/:code/claim) — no more direct `update team set user_id` needed.
 - The session scratchpad holds `mock_draft.mjs` (full scripted run),

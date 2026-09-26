@@ -10,6 +10,8 @@ export default defineConfig({
     // is never proxied to the API.
     proxy: {
       "/dev": "http://127.0.0.1:3000",
+      "/auth": "http://127.0.0.1:3000",
+      "/me": "http://127.0.0.1:3000",
       "/leagues": "http://127.0.0.1:3000",
       "/drafts": "http://127.0.0.1:3000",
       "/invites": "http://127.0.0.1:3000",

@@ -9,7 +9,11 @@ const sessionBody = z.object({
   email: z.string().email().optional(),
 });
 
-/** Dev-only auth: POST /dev/session { displayName, email? } -> { token, userId }. Real magic-link auth is phase 3. */
+/**
+ * Dev-only auth: POST /dev/session { displayName, email? } -> { token, userId },
+ * no check at all. Registered only when DEV_LOGIN=true (see buildServer) —
+ * real sign-in is the email code/link in auth.ts.
+ */
 export async function registerDevRoutes(app: FastifyInstance): Promise<void> {
   app.post("/dev/session", async (request, reply) => {
     const parsed = sessionBody.safeParse(request.body);

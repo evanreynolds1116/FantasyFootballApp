@@ -206,7 +206,9 @@ Budgets and roster counts are derived from awards and picks rather than stored a
 | --- | --- | --- |
 | `league` | id, name, commissioner_user_id, created_at | One per league/season |
 | `draft_settings` | league_id, team_count, budget, auction_spots, roster_size, min_bid, bid_step, tie_min_raise, clocks (nomination, bid, tie, pick), early_close, max_tie_rounds (null = unlimited), tie_fallback, no_bid_action, nominator_must_bid, nomination_order (snake/fixed), reveal_top_n, position_groups (json: name, positions, min, max), pick_expiry_action, broke_rule | Locked once the draft starts, except clocks and reveal_top_n |
-| `user` | id, display_name, email or phone, auth provider | Magic-link login |
+| `user` | id, display_name, email or phone, auth provider | Email sign-in (code + link); the email is the account |
+| `session` | token, user_id, expires_at | 90 days; big-board tokens (`spec_…`) are watch-only and last 2 days |
+| `login_code` | email, code_hash, link_hash, next, attempts, expires_at, used_at | One sign-in email: 6-digit code and link, 15 minutes, single use, 5 wrong tries; 5 emails per address per 15 minutes |
 | `team` | id, league_id, user_id, name, draft_number | draft_number = 1..N |
 | `player` | id, mfl_id, name, position, nfl_team, bye_week, status, custom | Imported pool + manual adds |
 | `draft` | id, league_id, phase (setup/auction/snake/makeup/complete), auction_round, current_lot_id, current_pick_no, paused, break_ends_at, version | `version` increments on every change for client sync |
@@ -241,7 +243,7 @@ flowchart LR
 | Real-time | Socket.IO rooms, one room per draft | Built-in reconnect, acknowledgements | Supabase Realtime, Ably, Pusher |
 | Server | Node.js + Fastify, one authoritative draft engine per draft | All rule logic in one place; easy to test | — |
 | Database | Postgres (Drizzle or Prisma) | Transactions for awards; unique constraints | Supabase |
-| Auth | Magic link / league invite code | Friends shouldn't need passwords | Google sign-in |
+| Auth | Email with a 6-digit code and a magic link (the code covers phones where the link opens in another browser); league invite code to claim a team | Friends shouldn't need passwords | Google sign-in |
 | Player data | MyFantasyLeague player export + CSV upload | IDs match the league for the push later | CSV only |
 | Hosting | Render, Railway or Fly.io + managed Postgres | Simple deploys, WebSocket support | Any VPS |
 | Testing | Vitest for the rules engine, Playwright for multi-browser draft simulations | Rules must be provably right | — |

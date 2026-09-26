@@ -66,6 +66,26 @@ export const session = pgTable("session", {
   expiresAt: timestamp("expires_at", { withTimezone: true }),
 });
 
+/**
+ * One sign-in email: a 6-digit code and a link, both good for 15 minutes and
+ * one use. Only hashes are stored. `next` is where to go after signing in.
+ */
+export const loginCode = pgTable(
+  "login_code",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    linkHash: text("link_hash").notNull().unique(),
+    next: text("next"),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_code_email_idx").on(t.email, t.createdAt)],
+);
+
 export const league = pgTable("league", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),

@@ -7,12 +7,21 @@ import { DEFAULT_SETTINGS, type DraftSettings } from "@draft-app/engine";
 import { settingsToRow } from "../src/db/mappers.js";
 import { draft, draftSettings, team, user, league } from "../src/db/schema.js";
 
-export async function startTestServer() {
-  const app = await buildServer({ logger: false });
+/** Every sign-in email the test server "sent", newest last. */
+export type SentMail = { to: string; subject: string; text: string };
+
+export async function startTestServer(options: { devLogin?: boolean } = {}) {
+  const sentMail: SentMail[] = [];
+  const app = await buildServer({
+    logger: false,
+    devLogin: options.devLogin ?? true,
+    mailer: { send: async (m) => void sentMail.push(m) },
+    appUrl: "http://app.test",
+  });
   await app.listen({ port: 0, host: "127.0.0.1" });
   const { port } = app.server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${port}`;
-  return { app, baseUrl, port };
+  return { app, baseUrl, port, sentMail };
 }
 
 export async function createDevSession(baseUrl: string, displayName: string, email?: string) {
@@ -125,6 +134,8 @@ export function waitForEvent<T = unknown>(socket: Socket, event: string): Promis
  * draft_settings) — the reverse order trips a FK violation.
  */
 export async function cleanupLeague(db: Db, leagueId: string, userIds: string[]) {
+  const drafts = await db.select({ id: draft.id }).from(draft).where(eq(draft.leagueId, leagueId));
+  for (const d of drafts) await db.delete(user).where(eq(user.email, `spectator:${d.id}`));
   await db.delete(draft).where(eq(draft.leagueId, leagueId));
   await db.delete(league).where(eq(league.id, leagueId));
   for (const userId of userIds) {

@@ -7,15 +7,17 @@ import { HomeRoute } from "./routes/HomeRoute";
 import { JoinRoute } from "./routes/JoinRoute";
 import { LobbyRoute } from "./routes/LobbyRoute";
 import { LoginRoute } from "./routes/LoginRoute";
+import { VerifyLinkRoute } from "./routes/VerifyLinkRoute";
 import { NewLeagueRoute } from "./routes/NewLeagueRoute";
 import { RostersRoute } from "./routes/RostersRoute";
 
-// Page paths stay clear of the API prefixes the dev server proxies (/leagues, /invites, /drafts, /dev) — see vite.config.ts.
+// Page paths stay clear of the API prefixes the dev server proxies (/leagues, /invites, /drafts, /dev, /auth, /me) — see vite.config.ts.
 export function App() {
   return (
     <Routes>
       <Route path="/" element={<HomeRoute />} />
       <Route path="/login" element={<LoginRoute />} />
+      <Route path="/login/verify" element={<VerifyLinkRoute />} />
       <Route path="/league/new" element={<NewLeagueRoute />} />
       <Route path="/league/:leagueId" element={<LobbyRoute />} />
       <Route path="/league/:leagueId/settings" element={<EditSettingsRoute />} />

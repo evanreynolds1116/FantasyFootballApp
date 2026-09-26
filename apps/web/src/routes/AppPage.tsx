@@ -21,7 +21,7 @@ export function AppPage({ children, wide = false }: { children: ReactNode; wide?
         </Link>
         {session && (
           <button type="button" onClick={logout} className="text-sm font-semibold text-muted hover:text-text">
-            Switch user
+            Sign out
           </button>
         )}
       </header>

@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type { Server } from "socket.io";
 import { createDb, type Db } from "./db/client.js";
 import { createEngineRuntime, type EngineRuntime } from "./engine/engineRuntime.js";
+import { registerAuthRoutes } from "./http/routes/auth.js";
 import { registerDevRoutes } from "./http/routes/dev.js";
 import { registerDraftRoutes } from "./http/routes/drafts.js";
 import { registerInviteRoutes } from "./http/routes/invites.js";
@@ -10,6 +11,7 @@ import { registerPlayerRoutes } from "./http/routes/players.js";
 import { registerQueueRoutes } from "./http/routes/queue.js";
 import "./http/types.js";
 import { broadcastEvents } from "./ws/broadcastEvents.js";
+import { mailerFromEnv, type Mailer } from "./mail/mailer.js";
 import { registerSocketServer } from "./ws/registerSocketServer.js";
 
 declare module "fastify" {
@@ -24,6 +26,16 @@ export type BuildServerOptions = {
   db?: Db;
   /** Defaults to true; tests typically pass false to keep output readable. */
   logger?: boolean;
+  /**
+   * The no-check name/email login (POST /dev/session) for local testing and
+   * bot scripts. Defaults to DEV_LOGIN=true in the environment; never set it
+   * in production — anyone could sign in as anyone.
+   */
+  devLogin?: boolean;
+  /** Sends sign-in emails. Defaults to mailerFromEnv() (Resend if configured, else the console). */
+  mailer?: Mailer;
+  /** Where sign-in links point. Defaults to APP_URL, else the Vite dev server. */
+  appUrl?: string;
 };
 
 /**
@@ -62,7 +74,13 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   // correctly but never reach connected clients.
   runtime.setBroadcaster((draftId, state, events) => broadcastEvents(io, draftId, state, events));
 
-  await app.register(registerDevRoutes);
+  const devLogin = options.devLogin ?? process.env.DEV_LOGIN === "true";
+  if (devLogin) await app.register(registerDevRoutes);
+  await app.register(registerAuthRoutes, {
+    mailer: options.mailer ?? mailerFromEnv(),
+    appUrl: options.appUrl ?? process.env.APP_URL ?? "http://localhost:5173",
+    devLogin,
+  });
   await app.register(registerLeagueRoutes);
   await app.register(registerPlayerRoutes);
   await app.register(registerQueueRoutes);

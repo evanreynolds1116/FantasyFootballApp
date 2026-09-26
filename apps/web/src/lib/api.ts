@@ -1,5 +1,47 @@
 import type { DraftSettings } from "@draft-app/engine";
 
+/** Fired on window when the server answers 401 — the session expired or was signed out elsewhere. */
+export const UNAUTHORIZED_EVENT = "draft-app:unauthorized";
+
+/** Unauthenticated JSON POST for the sign-in steps. Throws ApiError with the server's message. */
+async function publicPost<T>(path: string, body: unknown): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    throw new ApiError(0, "NETWORK", "Can't reach the server. Check your connection and try again.");
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) throw new ApiError(res.status, String(data.error ?? "ERROR"), typeof data.message === "string" ? data.message : "Something went wrong.");
+  return data as T;
+}
+
+export type VerifiedSession = { token: string; userId: string; next: string | null; needsName: boolean };
+
+/** Emails a sign-in code and link to `email`. */
+export function startSignIn(email: string, next?: string): Promise<{ ok: true }> {
+  return publicPost("/auth/start", { email, ...(next ? { next } : {}) });
+}
+
+/** Trades the emailed code (with its email) or the link's token for a session. */
+export function verifySignIn(proof: { email: string; code: string } | { token: string }): Promise<VerifiedSession> {
+  return publicPost("/auth/verify", proof);
+}
+
+/** A watch-only session for the big board. */
+export function startSpectating(draftId: string): Promise<{ token: string }> {
+  return publicPost(`/drafts/${encodeURIComponent(draftId)}/spectate`, {});
+}
+
+export async function getAuthConfig(): Promise<{ devLogin: boolean }> {
+  try {
+    const res = await fetch("/auth/config");
+    return res.ok ? ((await res.json()) as { devLogin: boolean }) : { devLogin: false };
+  } catch {
+    return { devLogin: false };
+  }
+}
+
 export async function mintDevSession(displayName: string, email?: string): Promise<{ token: string; userId: string }> {
   const res = await fetch("/dev/session", {
     method: "POST",
@@ -37,6 +79,7 @@ export async function api<T>(token: string, method: string, path: string, body?:
   }
   const text = await res.text();
   const data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   if (!res.ok) {
     const code = typeof data.error === "string" ? data.error : "ERROR";
     // Schema (zod) failures carry a raw JSON issue list as their message — not something to show a person.

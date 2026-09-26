@@ -4,7 +4,7 @@ A real-time web app for running a **sealed-bid auction + snake** fantasy footbal
 
 The goal is to cut a 6–8 hour whiteboard draft to about 3 hours without changing how the league plays.
 
-> **Status:** phases 1–3 of the build plan are done (rules engine, server, all draft-day and pre-draft screens), with two full-length 12-team scripted mock drafts completing cleanly against the live server. Still to come: a real mock draft with the league on phones, real (magic-link) login, the watchlist/queue, and MyFantasyLeague import/export. See [What's not built yet](#whats-not-built-yet).
+> **Status:** phases 1–3 of the build plan are done (rules engine, server, all draft-day and pre-draft screens), with two full-length 12-team scripted mock drafts completing cleanly against the live server. Since then: email sign-in (code + link), a private ranked queue, sounds and vibration, and the full commissioner console. Still to come: hosting, a real mock draft with the league on phones, and MyFantasyLeague import/export. See [What's not built yet](#whats-not-built-yet).
 
 **Contents**
 
@@ -60,7 +60,7 @@ All screens use the "stadium at night" dark theme (dark green, chalk white, scor
 
 ### 1. Sign in (`/login`) and Home (`/`)
 
-Enter your name (and optionally an email, so you can get back to the same team later). *This is a development-only login; real magic-link login is planned.* You're sent back to wherever you were headed.
+Enter your email and we send a 6-digit code and a sign-in link — no password. Type the code (handy on a phone, where a link can open in a different browser) or tap the link. The first time, you pick the name the league sees. You stay signed in on that device for 90 days, then you're sent back to wherever you were headed. (With `DEV_LOGIN=true` on the server, a "Developer login" that skips the email is also offered, for local testing only.)
 
 Home lists your leagues — which you run, which team is yours, and each league's status ("Setting up · 7 of 12 teams claimed", "Draft is live", "Draft complete"). From here: **Create a league**, or join one by typing an invite code.
 
@@ -319,6 +319,8 @@ pnpm install
 # Server configuration
 cp apps/server/.env.example apps/server/.env
 # then set DATABASE_URL (and optionally PORT, default 3000) in apps/server/.env
+# DEV_LOGIN=true turns on the no-check developer login; without RESEND_API_KEY,
+# sign-in emails are printed to the server console instead of sent.
 
 # Build the engine (the server and web app import its compiled output)
 pnpm --filter @draft-app/engine run build
@@ -373,13 +375,19 @@ Screens have been verified by hand in headless Chrome against a live server. Ful
 
 ## API reference
 
-All HTTP routes except `/dev/session` need `Authorization: Bearer <token>`.
+All HTTP routes except sign-in (`/auth/*`, `/dev/session`) and `/drafts/:id/spectate` need `Authorization: Bearer <token>`. Big-board (spectator) tokens are refused by every HTTP route; they can only watch over the socket.
 
 ### HTTP
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/dev/session` | Development login: `{ displayName, email? }` → `{ token, userId }` |
+| POST | `/auth/start` | Email a 6-digit code and a sign-in link `{ email, next? }` (5 per address per 15 min) |
+| POST | `/auth/verify` | `{ email, code }` or `{ token }` (from the link) → `{ token, userId, next, needsName }` |
+| POST | `/auth/logout` | End this session |
+| GET / PATCH | `/me` | Your account / change your display name |
+| GET | `/auth/config` | Whether the developer login is on |
+| POST | `/drafts/:id/spectate` | Watch-only session for the big board |
+| POST | `/dev/session` | Developer login, only with `DEV_LOGIN=true`: `{ displayName, email? }` → `{ token, userId }` |
 | POST | `/leagues` | Create a league with settings (placeholder team slots, invite code) |
 | GET | `/leagues` | Leagues you run or have a team in |
 | GET | `/leagues/:id` | Lobby view: settings, teams, invite code, pool size, draft status (members only) |
@@ -431,7 +439,7 @@ Budgets and roster counts are always *derived* from awards and picks, never stor
 
 | Table | Holds |
 | --- | --- |
-| `user`, `session` | People and their login tokens |
+| `user`, `session`, `login_code` | People, their sessions (90 days), and sign-in codes/links (hashed, 15 minutes, single use) |
 | `league` | Name, commissioner, invite code |
 | `draft_settings` | Every league setting (one row per league) |
 | `team` | Team slots: name, draft number, the manager who claimed it |
@@ -448,11 +456,9 @@ Database constraints back up the rules: a player appears in at most one pick per
 
 ## What's not built yet
 
-- **Real login.** Sign-in is a development shim (name + optional email). Magic-link login is planned.
-- **Watchlist / queue.** The snake screen's "My queue" tab is a placeholder; auto-pick uses best available.
+- **Sending sign-in emails for real.** Sign-in works end to end, but until a mail provider is set (`RESEND_API_KEY` + `MAIL_FROM`) the emails are printed to the server console — set it up along with hosting.
 - **MyFantasyLeague integration** — live player import and pushing results to MFL (phase 4). A CSV of an MFL export already works for the pool.
-- **Installable PWA** (manifest / offline shell), sounds and vibration (FR-20), team avatars, a mock round before the draft, editing a player after adding them, a server-side CSV export route.
-- **Commissioner console extras** — editing a team's budget/roster, void-lot and mark-unavailable buttons (the server supports both), a 10-second "back in" countdown after a break.
+- **Installable PWA** (manifest / offline shell), team avatars, a mock round before the draft, editing a player after adding them, a server-side CSV export route.
 - **Performance** — when all 12 teams bid at the same instant, the last acknowledgement takes ~0.7 s against the remote dev database (SPEC asks for under 300 ms); a database hosted near the server should close the gap.
 - **Automated browser tests** (Playwright).
 

@@ -1,74 +1,191 @@
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { getAuthConfig, startSignIn, verifySignIn, type VerifiedSession } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { errorMessage, FormError, inputClass, LoginCard, NameStep, primaryButton, safeNext } from "../components/login/LoginCard";
 
-/** Only same-app paths are followed after login, never an absolute URL someone put in ?next=. */
-function safeNext(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
-}
+type Step = { kind: "email" } | { kind: "code"; email: string } | { kind: "name"; verified: VerifiedSession };
 
-/** Dev-only login: mints a session via POST /dev/session. Real magic-link auth is a later phase. */
+/**
+ * Sign in with your email (SPEC FR-02: no passwords). We email a 6-digit
+ * code and a link: type the code here, or open the link — the code is what
+ * works on a phone where the link would open in a different browser.
+ */
 export function LoginRoute() {
-  const { session, login } = useAuth();
+  const { session, signIn } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
-  const [displayName, setDisplayName] = useState("");
+  const [step, setStep] = useState<Step>({ kind: "email" });
+
+  // Signed in already (and not mid-way through naming a new account).
+  if (session && step.kind !== "name") return <Navigate to={next} replace />;
+
+  const onVerified = (verified: VerifiedSession) => {
+    signIn({ token: verified.token, userId: verified.userId });
+    if (verified.needsName) setStep({ kind: "name", verified: { ...verified, next: verified.next ?? next } });
+    else navigate(safeNext(verified.next ?? next), { replace: true });
+  };
+
+  return (
+    <LoginCard>
+      {step.kind === "email" && <EmailStep next={next} onSent={(email) => setStep({ kind: "code", email })} />}
+      {step.kind === "code" && <CodeStep email={step.email} next={next} onVerified={onVerified} onBack={() => setStep({ kind: "email" })} />}
+      {step.kind === "name" && (
+        <NameStep token={step.verified.token} suggested="" onDone={() => navigate(safeNext(step.verified.next), { replace: true })} />
+      )}
+    </LoginCard>
+  );
+}
+
+function EmailStep({ next, onSent }: { next: string; onSent: (email: string) => void }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [devLoginOn, setDevLoginOn] = useState(false);
 
-  if (session) return <Navigate to={next} replace />;
+  useEffect(() => {
+    void getAuthConfig().then((c) => setDevLoginOn(c.devLogin));
+  }, []);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!displayName.trim()) {
-      setError("Enter your name.");
-      return;
-    }
+    const trimmed = email.trim();
+    if (!trimmed) return setError("Enter your email address.");
     setBusy(true);
+    setError("");
     try {
-      await login(displayName.trim(), email.trim() || undefined);
-      navigate(next, { replace: true });
-    } catch {
-      setError("Could not start a session. Is the server running?");
+      await startSignIn(trimmed, next);
+      onSent(trimmed);
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't send the email. Try again."));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
-      <form onSubmit={onSubmit} className="flex w-full max-w-sm flex-col gap-4 rounded-panel border border-line bg-surface p-6">
-        <h1 className="font-display text-2xl font-extrabold uppercase">Draft Day</h1>
+    <>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <p className="text-[15px] text-muted">Sign in with your email. We&apos;ll send you a code — no password.</p>
         <label className="flex flex-col gap-1.5 text-sm text-muted">
-          Your name
-          <input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            autoComplete="name"
-            className="h-11 rounded-ctl border border-line bg-surface-sunk px-3 text-text outline-none focus:border-accent"
-          />
+          Email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" inputMode="email" autoFocus className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm text-muted">
-          Email (optional — use it again to get back to the same team)
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            className="h-11 rounded-ctl border border-line bg-surface-sunk px-3 text-text outline-none focus:border-accent"
-          />
-        </label>
-        {error && (
-          <div role="alert" className="text-sm font-semibold text-warn">
-            {error}
-          </div>
-        )}
-        <button type="submit" disabled={busy} className="h-12 rounded-ctl bg-accent text-base font-bold uppercase tracking-[0.04em] text-on-accent disabled:opacity-40">
-          {busy ? "Signing in…" : "Continue"}
+        <FormError message={error} />
+        <button type="submit" disabled={busy} className={primaryButton}>
+          {busy ? "Sending…" : "Email me a code"}
         </button>
       </form>
-    </div>
+      {devLoginOn && <DevLogin next={next} />}
+    </>
+  );
+}
+
+function CodeStep({ email, next, onVerified, onBack }: { email: string; next: string; onVerified: (v: VerifiedSession) => void; onBack: () => void }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const verify = async (value: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      onVerified(await verifySignIn({ email, code: value }));
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't check the code. Try again."));
+      setBusy(false);
+    }
+  };
+
+  const resend = async () => {
+    setError("");
+    setNote("");
+    try {
+      await startSignIn(email, next);
+      setCode("");
+      setNote("New code sent. Use the newest email.");
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't send the email. Try again."));
+    }
+  };
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void verify(code);
+      }}
+      className="flex flex-col gap-4"
+    >
+      <p className="text-[15px]">
+        We emailed a 6-digit code to <span className="font-semibold">{email}</span>. Type it here, or open the link in the email.
+      </p>
+      <label className="flex flex-col gap-1.5 text-sm text-muted">
+        Code
+        <input
+          value={code}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+            setCode(digits);
+            if (digits.length === 6 && !busy) void verify(digits);
+          }}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          autoFocus
+          placeholder="123456"
+          className={`${inputClass} font-display text-2xl tracking-[0.3em]`}
+        />
+      </label>
+      <FormError message={error} />
+      {note && <div className="text-sm text-muted">{note}</div>}
+      <button type="submit" disabled={busy || code.length !== 6} className={primaryButton}>
+        {busy ? "Checking…" : "Sign in"}
+      </button>
+      <div className="flex justify-between text-sm font-semibold">
+        <button type="button" onClick={onBack} className="text-muted hover:text-text">
+          Use a different email
+        </button>
+        <button type="button" onClick={() => void resend()} className="text-muted hover:text-text">
+          Send a new code
+        </button>
+      </div>
+      <p className="text-[13px] text-muted">Not there? Check spam. Codes expire after 15 minutes.</p>
+    </form>
+  );
+}
+
+/** Local testing only: shown when the server has DEV_LOGIN on. No check — anyone can be anyone. */
+function DevLogin({ next }: { next: string }) {
+  const { devLogin } = useAuth();
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return setError("Enter a name.");
+    try {
+      await devLogin(name.trim(), email.trim() || undefined);
+      navigate(next, { replace: true });
+    } catch {
+      setError("Could not start a dev session.");
+    }
+  };
+
+  return (
+    <details className="rounded-ctl border border-dashed border-line px-3 py-2 text-sm">
+      <summary className="cursor-pointer font-semibold text-muted">Developer login (testing only)</summary>
+      <form onSubmit={submit} className="mt-3 flex flex-col gap-2">
+        <input aria-label="Dev name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        <input aria-label="Dev email" placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+        <FormError message={error} />
+        <button type="submit" className="h-10 rounded-ctl border border-line font-semibold">
+          Continue without checking
+        </button>
+      </form>
+    </details>
   );
 }
