@@ -18,4 +18,5 @@ export type ErrorCode =
   | "INVALID_QUEUE"
   | "INVALID_EDIT"
   | "ROSTER_FULL"
-  | "BID_IN_PROGRESS";
+  | "BID_IN_PROGRESS"
+  | "REVEAL_IN_PROGRESS";

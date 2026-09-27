@@ -22,10 +22,20 @@ import { reject, type ReduceResult } from "./rules/result.js";
  * everything else is locked out with DRAFT_PAUSED while the draft is
  * paused, since pausing freezes every clock and locks entry for everyone.
  */
+/** A team's draft moves: none are taken while a reveal is playing. */
+const TEAM_MOVES = new Set<Action["type"]>(["nominate", "bid:submit", "bid:pass", "tie:rebid", "pick:make"]);
+
 export function reduce(state: DraftState, action: Action, ctx: Ctx): ReduceResult {
   // A manager's own queue isn't a draft move, so it stays editable while paused.
   if (state.paused && !action.type.startsWith("admin:") && action.type !== "queue:update") {
     return reject(state, action, "DRAFT_PAUSED", "The draft is paused.");
+  }
+  // While a reveal plays, nothing moves on: every screen is showing it, and
+  // whatever comes next hasn't started its clock. Without this, anything that
+  // acts faster than a person (a bot, a script) could bid and early-close the
+  // next lot mid-reveal, cutting the show short for everyone.
+  if (state.revealHoldUntil !== null && ctx.now < state.revealHoldUntil && TEAM_MOVES.has(action.type)) {
+    return reject(state, action, "REVEAL_IN_PROGRESS", "Bids are being revealed — this opens when the reveal ends.");
   }
 
   switch (action.type) {

@@ -28,6 +28,8 @@ describe("bid secrecy invariant", () => {
     const ctx = makeCtx(1000);
     const allEvents: Event[] = [];
     const drive = (action: Parameters<typeof reduce>[1]) => {
+      // Like the managers, wait for any reveal to finish before the next move.
+      if (state.revealHoldUntil !== null && ctx.now < state.revealHoldUntil) ctx.now = state.revealHoldUntil;
       const res = reduce(state, action, ctx);
       state = res.state;
       allEvents.push(...res.events);

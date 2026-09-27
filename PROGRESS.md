@@ -21,7 +21,7 @@ and what's next.
 ## Where things stand, phase by phase
 
 **Phase 1 — Rules engine (`packages/engine`)**: done. Pure `reduce(state, action, ctx)`,
-244 tests, full 12-team scripted draft acceptance test. Committed.
+246 tests, full 12-team scripted draft acceptance test. Committed.
 
 **Phase 2 — Server (`apps/server`)**: done. Postgres schema (Drizzle), hybrid
 persistence, in-process timer scheduler with downtime recovery, HTTP routes,
@@ -187,6 +187,13 @@ architecture, the stack, setup and the API.
   - Bye weeks on the big board's live lot and in rosters/results; the bid
     card now puts position · team · bye in the chip above the name, like
     the board.
+  - Reveals cut short once only bots were bidding (the user went broke):
+    bots bid on the next lot mid-reveal and early close fired. Now the
+    engine refuses team moves (nominate, bid, pass, tie re-bid, pick) while
+    `revealHoldUntil` is in the future (REVEAL_IN_PROGRESS); commissioner
+    controls and queue edits still work. Verified on the live draft: each
+    reveal played its full length. The scratchpad `bots.mjs` waits out reveals.
+  - The draft finished cleanly (auction → snake → make-up → complete, 204 picks).
   - Fixes: paused clocks showed "--:--" (now the frozen time left, via
     `useCountdown`'s `remainingMs`); the big board's team list cut off
     team 12 on 900-px-tall screens (names now one line); the draft screen's

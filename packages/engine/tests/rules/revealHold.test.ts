@@ -84,3 +84,38 @@ describe("the reveal holds the next clock until its show (and a 10 s \"Up next\"
     expect(paused.revealHoldUntil).toBeNull();
   });
 });
+
+describe("nothing moves on while a reveal plays", () => {
+  it("refuses bids, passes and nominations until the reveal ends, then takes them", async () => {
+    const { reduce } = await import("../../src/reduce.js");
+    const { state: s0, lot1, lot2 } = openLot();
+    let s = applyBidSubmit(s0, { type: "bid:submit", teamId: "t1", lotId: lot1.id, amount: 20 }, makeCtx(1000)).state;
+    s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot1.id }, makeCtx(50_000)).state;
+    const endsAt = s.revealHoldUntil!;
+
+    for (const action of [
+      { type: "bid:submit", teamId: "t2", lotId: lot2.id, amount: 30 },
+      { type: "bid:pass", teamId: "t2", lotId: lot2.id },
+    ] as const) {
+      const res = reduce(s, action, makeCtx(endsAt - 1));
+      expect(res.events[0]).toMatchObject({ type: "draft:rejected", code: "REVEAL_IN_PROGRESS" });
+      expect(res.state).toBe(s);
+    }
+    // The commissioner and a manager's queue aren't draft moves.
+    expect(reduce(s, { type: "admin:pause" }, makeCtx(endsAt - 1)).events[0]).toMatchObject({ type: "draft:paused" });
+    expect(reduce(s, { type: "queue:update", teamId: "t1", playerIds: [] }, makeCtx(endsAt - 1)).events[0]).toMatchObject({ type: "queue:updated" });
+
+    const after = reduce(s, { type: "bid:submit", teamId: "t2", lotId: lot2.id, amount: 30 }, makeCtx(endsAt));
+    expect(after.events[0]).toMatchObject({ type: "lot:bidStatus", teamId: "t2" });
+  });
+
+  it("so a fast bidder can't early-close the next lot during the reveal", async () => {
+    const { reduce } = await import("../../src/reduce.js");
+    const { state: s0, lot1, lot2 } = openLot();
+    let s = applyBidSubmit(s0, { type: "bid:submit", teamId: "t1", lotId: lot1.id, amount: 20 }, makeCtx(1000)).state;
+    s = applyLotExpired(s, { type: "clock:lotExpired", lotId: lot1.id }, makeCtx(50_000)).state;
+    // Both teams try to get in on lot 2 a second into lot 1's reveal: neither counts.
+    for (const t of ["t1", "t2"]) s = reduce(s, { type: "bid:submit", teamId: t, lotId: lot2.id, amount: 10 }, makeCtx(51_000)).state;
+    expect(s.lots.find((l) => l.id === lot2.id)!.endsAt).toBe(s.revealHoldUntil! + BID_SEC * 1000);
+  });
+});

@@ -53,6 +53,8 @@ describe("full 12-team scripted draft (league defaults)", () => {
     const allEvents: Event[] = [];
 
     const drive = (action: Action) => {
+      // Like the managers, wait for any reveal to finish before the next move.
+      if (state.revealHoldUntil !== null && ctx.now < state.revealHoldUntil) ctx.now = state.revealHoldUntil;
       const res = reduce(state, action, ctx);
       expect(res.events[0], `unexpected rejection for ${action.type}`).not.toMatchObject({ type: "draft:rejected" });
       state = res.state;
@@ -60,6 +62,8 @@ describe("full 12-team scripted draft (league defaults)", () => {
       return res;
     };
     const driveAllowingRejection = (action: Action) => {
+      // Like the managers, wait for any reveal to finish before the next move.
+      if (state.revealHoldUntil !== null && ctx.now < state.revealHoldUntil) ctx.now = state.revealHoldUntil;
       const res = reduce(state, action, ctx);
       state = res.state;
       allEvents.push(...res.events);
