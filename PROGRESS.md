@@ -13,7 +13,11 @@ lot, injuries, 10-second "back in" countdown), then real sign-in (email code
 + magic link), then turned the reveal into a build-up show with the next
 clock held until it's over, refreshed the README and all its screenshots,
 gave the big board a TV-sized reveal, and added the server CSV export and
-mid-draft settings (reveal setting, league rename).
+mid-draft settings (reveal setting, league rename). Then a second manual mock
+draft ("Test 2": the user as commissioner + 11 bots, with a real 2026 NFL
+pool) drove player photos, bye weeks, slower reveal pacing with a 10-second
+"Up next" countdown, and fixes (paused clocks, the board's team list, reveals
+cut short when only bots were bidding). All committed through `1706127`.
 This file is a handoff snapshot, not permanent documentation — SPEC.md and
 UI.md are the source of truth for rules/design; this just tracks where we are
 and what's next.
@@ -34,9 +38,8 @@ verified in headless Chrome against a live server, including the pre-draft flow
 (League setup, Lobby, invite/claim). A full setup → join → start → draft run
 works through the UI alone, and two full-length 12-team scripted mock drafts
 (see "Mock draft runs" below) have finished clean. SPEC's phase-3 "done when" —
-friends complete a mock draft on phones — hasn't happened yet. Committed
-through `468cf86` (nominations list), then README screenshots and the
-watchlist/queue and sounds/vibration (see below). [README.md](README.md) walks through every screen, the rules, the
+friends complete a mock draft on phones — hasn't happened yet (it needs
+hosting). Everything is committed through `1706127`. [README.md](README.md) walks through every screen, the rules, the
 architecture, the stack, setup and the API.
 
 ## What's actually built and working in apps/web
@@ -224,6 +227,12 @@ architecture, the stack, setup and the API.
   a `size="board"` TV layout at the big board's scale (96px player, 168px
   price, flipped bids and next-up in a right column, bigger confetti, plus
   the pause banner and commissioner notices). Checked live at 1600×900.
+- **README screenshots re-shot again** (after Test 2) from a demo draft on the
+  real 2026 NFL pool, so they show photos, bye weeks and real names
+  (`walkthrough3.mjs` in the scratchpad: like walkthrough2 but loads
+  `nfl-players-2026.csv`, waits out reveals, and times the reveal shots to
+  the engine's show; `OUT=` and `STOP_AFTER_REVEAL=1` re-shoot just the
+  reveal).
 - **README refresh**: text brought up to date (queue, alerts, reveal show,
   console edits, sign-in, API/data model) and every screenshot re-shot from
   a new demo draft (`walkthrough2.mjs` in the scratchpad: signs in with real
@@ -489,14 +498,17 @@ Walkthrough, manual test and nominations session (2026-09-26):
   per draft and each save is ~2 round trips to the remote dev DB. A database
   co-located with the server should fix it; if not, the next step would be
   batching queued actions into one save ("group commit").
-- **During a tie, the reveal's "Up next" card names the tied lot itself**
-  (it's still the current lot). Minor, not fixed.
 - **The big board has no Rosters view** — it's a separate spectator route and
   only shows the teams overview column. Rosters & budgets needs a login.
 - **Undo doesn't roll back a phase change.** Undoing the award that ended the
   auction leaves the draft in the snake. SPEC is silent; not handled.
 - **Undoing a snake pick doesn't pause** and doesn't give the team its turn
   back — unchanged from phase 1; SPEC only spells out the award case.
+- **Player photos load from Sleeper's image server** (headshots, and team
+  logos for defenses), linked from the pool CSV. Fine for a private league;
+  it relies on Sleeper keeping those URLs, and the images belong to the NFL
+  and teams — not for a public or commercial app. Missing or broken photos
+  show the player's initials.
 - **Commissioner roster edits are blocked during the make-up round**, and
   adding a player only fills a spot the team has open — by design, so no
   roster can end up over size. Edits aren't undoable; fix one with a
@@ -531,6 +543,11 @@ Latest run: 17.6 min, 94 lots (67 ties), no findings. The script lives in the
 session scratchpad, not the repo — worth checking in (e.g. as
 `apps/server/scripts/mock-draft.mjs`) before the next big change.
 
+Manual runs: the user as commissioner (and one team) with 11 bots
+(`bots.mjs`). The second, "Test 2" (2026-09-26), used the real 2026 NFL pool
+and finished cleanly (auction → snake → make-up → complete, 204 picks); the
+user's feedback during it is in "What's actually built" above.
+
 ## How to pick this back up tomorrow
 
 - `apps/server`: `pnpm --filter @draft-app/server dev` (or
@@ -539,7 +556,7 @@ session scratchpad, not the repo — worth checking in (e.g. as
   --env-file`, not PowerShell's).
 - `apps/web`: `pnpm --filter @draft-app/web dev`, then http://localhost:5173.
 - Both `pnpm run typecheck` and `pnpm run build` are clean across all three
-  packages as of the player-photos commit. Note `pnpm run typecheck`
+  packages as of `1706127`. Note `pnpm run typecheck`
   checks the server against the engine's built `dist`, so run `pnpm run build`
   (or build the engine) first after changing engine types.
 - Headless browser checks: Chrome is installed; `playwright-core` with
@@ -547,14 +564,21 @@ session scratchpad, not the repo — worth checking in (e.g. as
 - Local sign-in: with `DEV_LOGIN=true` in `apps/server/.env` the login
   page offers the no-check developer login (and the bot scripts'
   `/dev/session` works). Real sign-in codes appear in the server console.
+- A real 2026 NFL player pool: `nfl-players-2026.csv` in the user's
+  Downloads (306 players with MFL ids, byes and Photo links; rebuilt from
+  MFL's public `export?TYPE=players|adp|nflByeWeeks` for 2026 and Sleeper's
+  `/v1/players/nfl` for photos). Upload it in a lobby like any pool CSV.
+- Manual test bots: `bots.mjs` joins the next league created (leaving one
+  team for the user), or reattaches to a league with `LEAGUE_ID=<id>` — do
+  that after any server restart, since the bots' sockets don't rejoin.
 - Demo drafts can now be set up through the UI (or POST /leagues + POST
   /invites/:code/claim) — no more direct `update team set user_id` needed.
 - The session scratchpad holds `mock_draft.mjs` (full scripted run),
   `bots.mjs` (manual test bots), `walkthrough2.mjs` (demo draft +
-  screenshots) — none are in the repo; check the useful ones in before
-  relying on them.
-- The Supabase dev DB from this session still has several leftover test
-  leagues/drafts in it (named things like "Snake Demo League", "Nominate Demo
-  League") — harmless, but worth a scoped cleanup pass (by league name, never
-  an unscoped `DELETE`) before or during the Commissioner console work if it
-  gets noisy.
+  screenshots) — none are in the repo, and a scratchpad doesn't outlive the
+  session; check the useful ones in before relying on them.
+- The Supabase dev DB still holds the user's two manual-test leagues, TEST
+  LEAGUE and Test 2 — keep them unless the user says otherwise — plus a few
+  older demo leagues ("Snake Demo League", "Nominate Demo League"). A scoped
+  cleanup (by league name, never an unscoped `DELETE`) is fine for the demo
+  ones when it gets noisy.

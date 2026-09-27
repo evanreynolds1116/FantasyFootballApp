@@ -82,7 +82,7 @@ The same screens and rules on every device; only the layout changes.
 - Amber winner card: team number and name, price in large display type.
 - Runner-up rows as allowed by the reveal setting (default 2), then "N other bids stay hidden" and "N teams passed" (a count, never who).
 - Tiles showing the winner's budget before → after and auction spots now filled.
-- "Up next" card with the next lot and a short countdown.
+- "Up next · clock starts in" card with the next lot and a 10-second countdown (never shown for a tie, where the same lot carries on).
 
 ### 4. Tie re-bid (`TieRebid.dc.html`)
 - Warn-colored banner "You're still tied" with who you're tied with, the amount, and the tie clock.

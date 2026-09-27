@@ -4,7 +4,7 @@ A real-time web app for running a **sealed-bid auction + snake** fantasy footbal
 
 The goal is to cut a 6–8 hour whiteboard draft to about 3 hours without changing how the league plays.
 
-> **Status:** phases 1–3 of the build plan are done (rules engine, server, all draft-day and pre-draft screens), with two full-length 12-team scripted mock drafts completing cleanly against the live server. Since then: email sign-in (code + link), a private ranked queue, sounds and vibration, the full commissioner console (budget/roster edits, void lot, injuries), and a build-up reveal show. Still to come: hosting, a real mock draft with the league on phones, and MyFantasyLeague import/export. See [What's not built yet](#whats-not-built-yet).
+> **Status:** phases 1–3 of the build plan are done (rules engine, server, all draft-day and pre-draft screens), with two full-length 12-team scripted mock drafts completing cleanly against the live server. Since then: email sign-in (code + link), a private ranked queue, sounds and vibration, the full commissioner console (budget/roster edits, void lot, injuries), a build-up reveal show (with a TV version for the big board), a server CSV export, and player photos and bye weeks. A second manual mock draft (the commissioner plus 11 bots, with a real 2026 NFL player pool) finished cleanly. Still to come: hosting, a real mock draft with the league on phones, and MyFantasyLeague import/export. See [What's not built yet](#whats-not-built-yet).
 
 **Contents**
 
@@ -116,7 +116,7 @@ One screen that shows whatever is happening right now.
   <img src="docs/screenshots/nominate-search.png" alt="Nominate search showing an already-nominated player and why" width="260">
 </p>
 
-**Bid.** The player card with a countdown ring; your budget, auction spots and count at this position; an amount entry (keypad on phones, a typed field + Enter on laptops); **Lock in sealed bid** and **Pass**. After locking in: "Your bid is in and hidden" (or "You passed") with **Change bid / pass**. A strip shows "N of M are in" — one tile per team, never amounts, bids and passes identical. If you can't bid (full, broke, at a position max) the controls say why.
+**Bid.** The player card — photo, then position · NFL team · bye week above the name — with a countdown ring; your budget, auction spots and count at this position; an amount entry (keypad on phones, a typed field + Enter on laptops); **Lock in sealed bid** and **Pass**. After locking in: "Your bid is in and hidden" (or "You passed") with **Change bid / pass**. A strip shows "N of M are in" — one tile per team, never amounts, bids and passes identical. If you can't bid (full, broke, at a position max) the controls say why.
 
 <p>
   <img src="docs/screenshots/bid-phone.png" alt="Bid on a phone: keypad, Lock in sealed bid, Pass" width="260">
@@ -196,7 +196,7 @@ Resume starts a 10-second "Back in…" countdown on every screen before the cloc
 
 ### 8. Big board (`/board/:id`)
 
-A read-only 16:9 view for a TV or projector — no login needed. During nominations it shows a tile per team in nomination order (the player each has put up, the team on the clock with its countdown, the teams still to come). During bidding: the live lot with a very large clock, the "who's in" strip, this round's lots (sold / bidding now / up next), and every team's money and spots (broke teams flagged). It also plays the reveal show (without sound), shows tie-breaks, break countdowns, commissioner notices, the snake and make-up board, and finally the results. Because it needs no login, **the big board link doubles as the shareable results page**.
+A read-only 16:9 view for a TV or projector — no login needed. During nominations it shows a tile per team in nomination order (the player each has put up, the team on the clock with its countdown, the teams still to come). During bidding: the live lot (player photo, position · team · bye, name) with a very large clock, the "who's in" strip, this round's lots (sold / bidding now / up next), and every team's money and spots (broke teams flagged). It also plays the reveal show (without sound), shows tie-breaks, break countdowns, commissioner notices, the snake and make-up board, and finally the results. Because it needs no login, **the big board link doubles as the shareable results page**.
 
 <img src="docs/screenshots/board-nominations.png" alt="Big board during nominations" width="800">
 
@@ -436,7 +436,7 @@ All HTTP routes except sign-in (`/auth/*`, `/dev/session`) and `/drafts/:id/spec
 | DELETE | `/leagues/:id/teams/:teamId/manager` | Free a claimed slot (commissioner) |
 | PUT | `/leagues/:id/draft-order` | Set the draft order manually |
 | POST | `/leagues/:id/draft-order/shuffle` | Shuffle the order on the server |
-| GET / POST | `/leagues/:id/players` | List / add players (POST accepts `replace: true`) |
+| GET / POST | `/leagues/:id/players` | List / add players (POST accepts `replace: true`; each player may carry an `https://` `photoUrl`) |
 | GET / PUT | `/leagues/:id/queue` | Your own ranked queue `{ playerIds }` (before or during the draft) |
 | DELETE | `/leagues/:id/players/:playerId` | Remove a player from the pool |
 | POST | `/leagues/:id/start` | Create the draft and start it; locks setup |
@@ -488,7 +488,7 @@ Budgets and roster counts are always *derived* from awards, picks and the commis
 | `league` | Name, commissioner, invite code |
 | `draft_settings` | Every league setting (one row per league) |
 | `team` | Team slots: name, draft number, the manager who claimed it |
-| `player` | The league's player pool (MFL id, name, position, NFL team, bye) |
+| `player` | The league's player pool (MFL id, name, position, NFL team, bye, optional photo URL) |
 | `draft` | Phase, round, current lot/pick, paused/break, version, engine bookkeeping (including the commissioner's edit log and budget adjustments) |
 | `lot` | A nominated player up for bid: state, clocks, eligibility snapshot, tie round, winner, price, reveal setting at reveal |
 | `bid` | Every bid and pass (including replaced ones, for the audit trail) |

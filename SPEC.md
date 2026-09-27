@@ -117,7 +117,7 @@ Final rosters, spend per team and a full pick/bid log, exportable as CSV, a shar
 | FR-01 | Commissioner creates a league with all settings in the rules table; settings lock when the draft starts, except clock lengths and reveal display | Must |
 | FR-02 | Managers join via invite link and claim a team (name, optional avatar); no password beyond a magic link or code | Must |
 | FR-03 | Draft order: random shuffle or manual assignment of team numbers | Must |
-| FR-04 | Player pool imported from MyFantasyLeague's player export, searchable by name, position, NFL team; manual add/edit | Must |
+| FR-04 | Player pool imported from MyFantasyLeague's player export, searchable by name, position, NFL team; manual add/edit; an optional photo per player (an `https://` link in the CSV's Photo column) | Must |
 | FR-05 | Nomination order snakes across auction rounds (1→12, 12→1); only available players; skip teams that are full or broke | Must |
 | FR-06 | Sealed bids: one active bid or pass per team per lot, editable until close, bids validated against min bid, bid step, remaining budget and position max; a pass is indistinguishable from a bid before reveal | Must |
 | FR-07 | Bid amounts are never sent to any client (commissioner included) before reveal; clients only see submitted/not submitted per team | Must |
@@ -211,7 +211,7 @@ Budgets and roster counts are derived from awards and picks rather than stored a
 | `session` | token, user_id, expires_at | 90 days; big-board tokens (`spec_…`) are watch-only and last 2 days |
 | `login_code` | email, code_hash, link_hash, next, attempts, expires_at, used_at | One sign-in email: 6-digit code and link, 15 minutes, single use, 5 wrong tries; 5 emails per address per 15 minutes |
 | `team` | id, league_id, user_id, name, draft_number | draft_number = 1..N |
-| `player` | id, mfl_id, name, position, nfl_team, bye_week, status, custom | Imported pool + manual adds |
+| `player` | id, mfl_id, name, position, nfl_team, bye_week, photo_url, status, custom | Imported pool + manual adds; photo_url is display only |
 | `draft` | id, league_id, phase (setup/auction/snake/makeup/complete), auction_round, current_lot_id, current_pick_no, paused, break_ends_at, version | `version` increments on every change for client sync |
 | `lot` | id, draft_id, round, order_in_round, player_id, nominated_by_team_id, state, tie_round, ends_at, remaining_ms, winner_team_id, price | One nominated player up for bid |
 | `bid` | id, lot_id, team_id, tie_round, amount, received_at, superseded | Latest non-superseded row per team per tie_round counts |
